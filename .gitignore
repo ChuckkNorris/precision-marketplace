@@ -1,0 +1,14 @@
+# Cursor canvas local state — per-learner, must stay private. Do not commit.
+*.canvas.data.json
+*.canvas.status.json
+
+# macOS
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+
+# Node
+node_modules/

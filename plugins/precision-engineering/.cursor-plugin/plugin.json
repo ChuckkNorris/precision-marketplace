@@ -1,0 +1,22 @@
+{
+  "name": "precision-engineering",
+  "displayName": "Precision Engineering",
+  "description": "A configuration-driven agentic development workflow for enterprise-grade codebases. Generates technically-focused plans, implements them through specialized subagents, and reviews the result before opening a pull request.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Precision Marketplace"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/ChuckkNorris/precision-marketplace/blob/main/plugins/precision-engineering/README.md",
+  "repository": "https://github.com/ChuckkNorris/precision-marketplace",
+  "keywords": [
+    "workflow",
+    "planning",
+    "code-review",
+    "subagents",
+    "enterprise"
+  ],
+  "category": "developer-tools",
+  "agents": "agents",
+  "skills": "skills"
+}

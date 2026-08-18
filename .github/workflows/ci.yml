@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  sanity:
+    name: Sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Required files
+        run: |
+          test -f README.md
+          test -f public/index.html
+
+  validate-marketplace:
+    name: Validate marketplace
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Validate manifests and skills
+        run: node scripts/validate-marketplace/index.mjs
+
+  # Required merge check. Add new jobs to `needs` so the ruleset stays unchanged.
+  ci:
+    name: CI
+    if: always()
+    needs: [sanity, validate-marketplace]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All required jobs green
+        run: |
+          failed=""
+          if [ "${{ needs.sanity.result }}" != "success" ]; then
+            failed="$failed sanity=${{ needs.sanity.result }}"
+          fi
+          if [ "${{ needs.validate-marketplace.result }}" != "success" ]; then
+            failed="$failed validate-marketplace=${{ needs.validate-marketplace.result }}"
+          fi
+          if [ -n "$failed" ]; then
+            echo "Required job(s) failed:$failed"
+            exit 1
+          fi

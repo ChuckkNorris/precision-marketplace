@@ -1,0 +1,4 @@
+{
+  "name": "precision-marketplace",
+  "install": "node scripts/validate-marketplace/index.mjs"
+}

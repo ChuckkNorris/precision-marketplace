@@ -1,0 +1,17 @@
+{
+  "name": "precision-codex-plugin-marketplace",
+  "owner": {
+    "name": "Precision Marketplace"
+  },
+  "metadata": {
+    "description": "Precision Marketplace — shared marketplace of Codex plugins and skills.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "precision-engineering",
+      "source": "./plugins/precision-engineering",
+      "description": "A configuration-driven agentic development workflow for enterprise-grade codebases. Generates technically-focused plans, implements them through specialized subagents, and reviews the result before opening a pull request."
+    }
+  ]
+}

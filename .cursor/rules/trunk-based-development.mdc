@@ -1,0 +1,14 @@
+---
+description: Trunk-based development and PR workflow for this repo
+alwaysApply: true
+---
+
+# Trunk-based development
+
+`main` is the only long-lived branch and stays releasable.
+
+- Branch from latest `main`. Keep the branch short-lived. Open a PR. Squash-merge. GitHub deletes the branch.
+- Never push to `main`, force-push `main`, or create long-lived branches (`develop`, `release/*`, `hotfix/*`).
+- One concern per PR. Name branches `type/short-description` (`feat/plugin-manifest`, `fix/ci-gate`).
+- Merge requires 1 approving review, resolved conversations, and the `CI` check green. Admins may bypass on a PR for emergencies only.
+- Add new CI jobs as `needs` of the `CI` job in `.github/workflows/ci.yml`. Do not add extra required checks to the ruleset.
