@@ -26,5 +26,5 @@ Plan revisions route back here. Read the current plan directory first and edit i
 
 Procedure: [pe-plan](../skills/pe-plan/SKILL.md)
 Plan contract: [plan-contract](../shared/plan-contract.md)
-Templates: [backend](../skills/pe-plan/references/backend-technical-plan-template.md) · [frontend](../skills/pe-plan/references/frontend-technical-plan-template.md)
-Example: [development-plan-example](../skills/pe-develop/references/development-plan-example.md)
+
+The procedure names the plan templates and the artifact rules to load, and they are authoritative. A worked example of every artifact exists at [development-plan-example](../skills/pe-plan/references/development-plan-example.md) — read it only when they leave you unsure of a shape, never by default.

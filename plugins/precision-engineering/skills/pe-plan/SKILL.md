@@ -16,9 +16,9 @@ The brief, the resolved configuration, the applications in scope, and each `<app
 1. Load every skill resolved for the `plan` step and for each in-scope application, plus each application's `conventions`. These are the repository's mandatory standards — the plan must conform to them, not merely mention them.
 2. Read each `<app-name>.instructions.md`'s `## Current state` and the precedents it cites. Deviating from a cited precedent requires a stated reason in **Design**. **Never edit `## Current state`** — it is the Explorer's write-once record, and the reason your deviation is checkable at all.
 3. Decide scope. **Write out-of-scope before writing tasks** — adjacent problems noticed while planning are recorded there, never folded into the work.
-4. Write the artifacts in [plan-contract.md](../../shared/plan-contract.md), respecting the two-tier split: `overview.md` with status `awaiting-approval`; `<app-name>.plan.md` carrying the task checklist, the design sections, test scenarios, and a one-line `## AI Instructions` pointer; and the file manifest and task details appended to `<app-name>.instructions.md` beneath the Explorer's `## Current state`. Integration points crossing an application boundary go in `overview.md` under **Design**.
+4. Complete `overview.md` per [plan-contract.md](../../shared/plan-contract.md) — the orchestrator seeded it with the requirement and scope; you add design, risks, and rollback, and set status `awaiting-approval` — and write each application's two files per [plan-artifacts.md](./references/plan-artifacts.md). Integration points crossing an application boundary go in `overview.md` under **Design**.
    **Put nothing in the plan file an approver cannot act on, and nothing in the instructions file a Developer cannot execute.** Reconnaissance, manifest rows, and a task's mechanics belong to the instructions; scope, behavior, contracts, and call stacks belong to the plan.
-5. Structure the design sections from the plan template for the application's `type` — [backend](./references/backend-technical-plan-template.md), [frontend](./references/frontend-technical-plan-template.md), or both for `fullstack`. Emit every template section: one with nothing to record is marked `None` with a reason, not dropped. Expand the `<Additional…Section>` placeholders — they are where the plan stops being generic.
+5. Structure the design sections from the plan template for the application's `type`, per the mapping in [plan-artifacts.md](./references/plan-artifacts.md). Write the sections that apply, name every dropped one in a single `**Not applicable:**` line with its reason, and expand the `<Additional…Section>` placeholders — they are where the plan stops being generic.
 6. Trace the call stack for each core path end to end, naming real functions and modules, under the `#### Callstack` heading of the endpoint or flow it belongs to. This is where code-level design errors surface — a plan whose call stack does not connect is wrong regardless of how reasonable the prose reads.
 7. Name test scenarios explicitly: happy path, boundary, failure, authorization. "Add unit tests" is not a scenario.
 8. Derive each task's `Verify` from the application's configured `commands`. A task you cannot write a verification for is not yet specified well enough.
@@ -34,16 +34,15 @@ Apply the escalate-versus-decide test in the contract first. Anything answerable
 ## Guardrails
 
 - Unknowns become open questions that block implementation — never assumptions.
-- Every section of the app's plan template is present, `None` where empty.
+- Every applicable template section is written, and every dropped one is named in the `**Not applicable:**` line with its reason.
 - Every endpoint names its authorization; every component names its props and its place in the hierarchy.
-- Every path in a task appears in that application's file manifest.
-- Every task detail in `<app-name>.instructions.md` has a matching checklist entry in `<app-name>.plan.md`, and vice versa. The two files are written together; a task in one and not the other is the most likely way this split breaks.
-- Every task carries a `Reference` naming the files to read first and the plan section holding its contract.
-- Acceptance criteria state observable behavior. "Refactor cleanly" is not acceptance.
+- Every task meets the task-format rules in [plan-artifacts.md](./references/plan-artifacts.md): matched across both files, inside the manifest, carrying a `Reference`, observable acceptance, a runnable `Verify`, and small enough for one agent in one sitting.
+- Every task's `Depends on` is complete, including where it reaches another application. Implementation runs applications concurrently when their manifests do not overlap, so a dependency you omit becomes a race rather than a delay.
 - Per-application plan files come from `applications[]`. Never emit a fixed frontend/backend pair; a single `fullstack` application gets a single plan file.
-- Size tasks so one agent completes one in a sitting.
 
 ## Revising an existing plan
+
+Revisions arrive from the plan gate, from resolved open questions, or as pull request feedback recorded in `overview.md` `## Plan feedback`. Mark each feedback entry `[x]` as you address it, and escalate rather than choose when feedback contradicts the ticket.
 
 Read the plan directory first. Edit in place and **preserve existing task markers** — a task already `[x]` or `[~]` keeps its marker unless the revision genuinely invalidates that work, in which case reset it to `[ ]` and say so explicitly. Never silently rewrite completed history.
 

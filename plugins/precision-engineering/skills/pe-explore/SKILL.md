@@ -24,7 +24,7 @@ The brief, the resolved configuration, and the application in scope. One Explore
 
 ## Output
 
-Create `docs/plans/<feature-slug>/<app-name>.instructions.md` containing **only** the `## Current state` section below. The Planner appends the file manifest and task details beneath it, and writes the human-facing `<app-name>.plan.md` separately, per [plan-contract.md](../../shared/plan-contract.md).
+Create `docs/plans/<feature-slug>/<app-name>.instructions.md` containing **only** the `## Current state` section below. The Planner appends the file manifest and task details beneath it, and writes the human-facing `<app-name>.plan.md` separately — neither is yours to create.
 
 ```markdown
 # <app-name> — <Feature Title>

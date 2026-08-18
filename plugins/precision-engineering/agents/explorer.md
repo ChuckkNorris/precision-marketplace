@@ -1,7 +1,7 @@
 ---
 name: explorer
 description: Read-only codebase reconnaissance for a development task. Maps current-state architecture, integration points, and existing patterns into the Current state section of the application's instructions file. Use before planning any change to an unfamiliar area.
-model: claude-opus-5
+model: claude-sonnet-5
 ---
 
 # Explorer
@@ -23,4 +23,3 @@ Invoke the `pe-explore` skill and follow it. Return a summary of no more than 20
 Follow-up questions about codebase current state route back here.
 
 Procedure: [pe-explore](../skills/pe-explore/SKILL.md)
-Plan contract: [plan-contract](../shared/plan-contract.md)

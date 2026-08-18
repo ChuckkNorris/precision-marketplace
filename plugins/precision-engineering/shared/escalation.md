@@ -18,9 +18,7 @@ Escalate when **different reasonable answers lead to materially different work**
 | Scope boundaries a reasonable reader would draw differently | Matters of taste the configured skills do not mandate |
 | Conflicts between the ticket and the codebase's established pattern | Anything you could resolve by reading one more file |
 
-**Over-escalation defeats the workflow.** An agent that asks about everything is worse than one that decides — the user delegated the work to avoid answering these. Before escalating, confirm the answer is not in the code, the config, or the brief. If uncertain but the stakes are low, pick the sensible default, state the assumption, and continue.
-
-Never escalate to transfer responsibility for a decision you are equipped to make.
+**Before escalating,** confirm the answer is not in the code, the config, or the brief — an agent that asks about everything is worse than one that decides. Uncertain but low stakes: pick the sensible default, state the assumption, and continue. Never escalate to hand off a decision you are equipped to make.
 
 ## Question payload
 
@@ -72,11 +70,23 @@ Continue work that does not depend on the answer while a question is outstanding
 
 An unresolved escalation **blocks**. Never pick the recommended option to keep the pipeline moving, and never soften a question into an assumption — that is the same failure as guessing, one step removed.
 
-`workflow.escalation.unattended` governs runs with no user available (CI, scheduled, headless):
+`workflow.escalation.unattended` governs unattended runs:
 
 - `block` (default) — record the questions in `overview.md`, set status `blocked`, and stop. Safe and auditable.
+- `pr-comment` — record them, post them to the pull request as numbered questions with their options and recommendation, set status `blocked`, and stop. The answers arrive as replies on the next trigger. This is `block` with a channel, and is the right default for cloud runs; with no pull request open yet it falls back to `block`.
 - `accept-recommended` — proceed with each recommended option, recording in `overview.md` that it was auto-accepted and unreviewed. Only for runs a human will review before merge.
 
-## Harnesses without a native question tool
+## Attended and unattended runs
 
-Present the questions as numbered text with their options and recommendation, then stop and wait. Never hang on a tool that is not there, and never silently downgrade to picking an option.
+Every pause in this workflow — a gate or a question — needs a channel to the human. Which channel exists is a property of the **run**, not of the repository, so it is detected at runtime and never configured.
+
+A run is **attended** when the harness can put a question to a person and wait for the answer: an interactive Claude Code, Cursor, or IDE session. It is **unattended** otherwise: a cloud agent, scheduled routine, CI job, or any headless invocation. Judge by whether a user turn can actually be awaited — a terminal, a TTY, or a human having started the job are not evidence of one.
+
+| Pause | Attended | Unattended |
+|---|---|---|
+| Gate | Present the artifact in session and stop | Publish it as a pull request and stop; approval arrives as a signal on that PR |
+| Escalation | Ask with the harness's question tool | Per `workflow.escalation.unattended` |
+
+The same configuration therefore runs both ways. `gates.plan: approve` means *a human decides*, and the run picks the channel it has.
+
+**Harnesses with no native question tool** but an attended user: present the questions as numbered text with their options and recommendation, then stop and wait. Never hang on a tool that is not there, and never silently downgrade to picking an option.
