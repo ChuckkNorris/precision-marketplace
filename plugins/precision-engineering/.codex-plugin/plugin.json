@@ -1,6 +1,6 @@
 {
   "name": "precision-engineering",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A configuration-driven agentic development workflow for enterprise-grade codebases. Generates technically-focused plans, implements them through specialized subagents, and reviews the result before opening a pull request.",
   "author": {
     "name": "Precision Marketplace"
