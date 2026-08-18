@@ -94,7 +94,7 @@ applications:                       # required; one entry per deployable/buildab
 - `none` — No test authoring required. Existing tests must still pass.
 
 ### `workflow.gates`
-Gates are the only sanctioned pause points; agents never invent their own. A light-track run has no plan gate, since it produces no plan; `gates.plan` is inert there.
+Gates are the only sanctioned pause points; agents never invent their own.
 
 | Mode | Behavior |
 |---|---|

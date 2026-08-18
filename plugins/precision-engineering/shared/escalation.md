@@ -78,7 +78,7 @@ An unresolved escalation **blocks**. Never pick the recommended option to keep t
 
 ## Attended and unattended runs
 
-Every pause in this workflow — a gate, a track confirmation, a question — needs a channel to the human. Which channel exists is a property of the **run**, not of the repository, so it is detected at runtime and never configured.
+Every pause in this workflow — a gate or a question — needs a channel to the human. Which channel exists is a property of the **run**, not of the repository, so it is detected at runtime and never configured.
 
 A run is **attended** when the harness can put a question to a person and wait for the answer: an interactive Claude Code, Cursor, or IDE session. It is **unattended** otherwise: a cloud agent, scheduled routine, CI job, or any headless invocation. Judge by whether a user turn can actually be awaited — a terminal, a TTY, or a human having started the job are not evidence of one.
 
@@ -86,7 +86,6 @@ A run is **attended** when the harness can put a question to a person and wait f
 |---|---|---|
 | Gate | Present the artifact in session and stop | Publish it as a pull request and stop; approval arrives as a signal on that PR |
 | Escalation | Ask with the harness's question tool | Per `workflow.escalation.unattended` |
-| Track confirmation | Ask | Take the judged track, recording the deciding checks |
 
 The same configuration therefore runs both ways. `gates.plan: approve` means *a human decides*, and the run picks the channel it has.
 

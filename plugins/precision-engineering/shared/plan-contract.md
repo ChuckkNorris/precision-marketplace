@@ -10,7 +10,7 @@ This contract carries what more than one agent reads: which files exist, who wri
 
 | File | Written by | Purpose |
 |---|---|---|
-| `brief.md` | Orchestrator | Normalized requirement, whatever its source. On a light-track run, also the Developer's task checklist. |
+| `brief.md` | Orchestrator | Normalized requirement, whatever its source. |
 | `overview.md` | Orchestrator, then Planner, then Developer, then orchestrator | Requirements, scope, cross-cutting design, risks, open questions, gates, run state. |
 | `<app-name>.plan.md` | Planner, then Developer | One per application in scope. Task checklist and the design a human approves at the gate. |
 | `<app-name>.instructions.md` | Explorer, then Planner, then Developer | One per application in scope. Agent-facing execution detail: current state, file manifest, per-task instructions. |
@@ -21,8 +21,6 @@ This contract carries what more than one agent reads: which files exist, who wri
 **One writer per path.** Each Explorer owns one application's instructions file, which is what lets exploration run concurrently.
 
 **Progress lives in the plan.** Task status sits in the checklist that defines the task, run state in `overview.md`. There is no progress file, so nothing drifts out of sync.
-
-**A light-track run produces `brief.md`, `overview.md`, and the findings files only** — no plan or instructions file, since no Planner runs. Task status lives in `brief.md`; everything else here applies unchanged.
 
 ## Task status markers
 
@@ -110,4 +108,4 @@ The Developer records the short SHA each command ran against. Review confirms th
 
 ## Resuming
 
-An agent resuming after a context reset reads `overview.md` for run state, `<app-name>.plan.md` for task status, and `<app-name>.instructions.md` for current state and task detail — `brief.md` for both on a light-track run — then continues without re-deriving anything. These files are authoritative over any agent's recollection — a populated `## Current state` means exploration is done and must not be repeated.
+An agent resuming after a context reset reads `overview.md` for run state, `<app-name>.plan.md` for task status, and `<app-name>.instructions.md` for current state and task detail, then continues without re-deriving anything. These files are authoritative over any agent's recollection — a populated `## Current state` means exploration is done and must not be repeated.

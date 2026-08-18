@@ -15,7 +15,7 @@ Then run `pe-setup` in the repository you want to work in. The per-repository co
 | Command | Purpose |
 |---|---|
 | `pe-setup` | Detect the repository's applications, stacks, and commands, then generate `.agents/precision-engineering.config.md`. Run first; re-run when the repository changes. |
-| `pe-develop <ticket\|description>` | Run the pipeline: explore → plan → approve → implement → review → PR. Small changes take a light track straight to implement → review → PR. |
+| `pe-develop <ticket\|pr\|description>` | Run the pipeline: explore → plan → approve → implement → review → PR. Resumes an in-flight run from its plan directory. |
 
 Each stage is also invocable on its own — `pe-explore`, `pe-plan`, `pe-implement`, `pe-review` — for when you want one step without the pipeline, its gates, or its git handling.
 
@@ -34,13 +34,9 @@ pe-develop <ticket|pr|description>
   6  Reviewer       pe-review     -> judge the diff -> <app>.findings.md
                                      (blocking findings route back to 5)
   7  [GATE]         PR approval, then mark ready (or push and open)
-
-  light track: 0 -> 1 -> 5 -> 6 -> 7, working from brief.md with no plan
 ```
 
-**Two tracks.** The full pipeline is the default. A change that is small on every count — one application, no new dependency or schema or contract change, no design decision, local blast radius — takes the light track instead: no Explorer, no Planner, no plan gate. The orchestrator proposes the track and the user confirms it; unattended runs judge and proceed without asking. Anything that turns out larger mid-run is promoted back to the full track rather than finished light.
-
-Implementation and review run on both tracks, so nothing merges unreviewed either way.
+**Every change runs every stage.** There is no abbreviated path: a change too small to plan is still planned, and its plan is correspondingly small. Nothing merges unplanned or unreviewed.
 
 **The Reviewer changes nothing.** Defects, missed requirements, standards violations, and documentation gaps all become findings; the orchestrator routes the blocking ones back to the Developer, and the re-review judges the remediation diff alone. A reviewer that edited the code would be judging its own work.
 
@@ -62,7 +58,7 @@ Every run writes to `docs/plans/<feature-slug>/` in the consuming repository:
 
 | File | Purpose |
 |---|---|
-| `brief.md` | The normalized requirement, whatever its source. On a light-track run, also the task checklist. |
+| `brief.md` | The normalized requirement, whatever its source. |
 | `overview.md` | Scope, cross-cutting design, risks, rollback, open questions, run state. |
 | `<app>.plan.md` | Task checklist and the design a human approves at the gate. |
 | `<app>.instructions.md` | Reconnaissance, file manifest, and per-task execution detail for the Developer. |

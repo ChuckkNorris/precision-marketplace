@@ -9,9 +9,9 @@ Judge the diff; never change it. Everything wrong with it — a defect, a missed
 
 ## Inputs
 
-The plan directory, the diff against the base branch, the resolved configuration, and whether the run is light. One Reviewer covers the whole run — every application in scope, every lens — so cross-application defects surface. Invoked standalone: read `.agents/precision-engineering.config.md` yourself and diff against `git.pr.base`.
+The plan directory, the diff against the base branch, and the resolved configuration. One Reviewer covers the whole run — every application in scope, every lens — so cross-application defects surface. Invoked standalone: read `.agents/precision-engineering.config.md` yourself and diff against `git.pr.base`.
 
-**Told the run is light, there is no plan** — judge fidelity against `brief.md`. With neither plan nor brief, drop the fidelity lens and say so in the output.
+**Invoked standalone with no plan directory**, drop the plan-fidelity lens and say so in the output. Every other lens applies unchanged.
 
 Load every skill resolved for the `review` step before starting.
 
@@ -30,8 +30,6 @@ The exit gate is already run and recorded. Read the `overview.md` verification t
 Examine the diff through every lens. Assume it is broken until the diff shows otherwise.
 
 The lenses interact — a test gap that is really a defect, a standards violation that opens a hole, fidelity drift that explains a bug. Report each root cause once, under the lens that best explains it, rather than the same fault once per lens that can see it.
-
-On a light-track run `brief.md` replaces the plan: **In scope** bounds the diff in place of the file manifest, and **Stated acceptance criteria** carry the requirements. Judge fidelity against those, never the `## Tasks` checklist — the Developer derived it from its own work, so it cannot evidence completeness. A lens check naming a plan section that does not exist is dropped, not reported as a finding.
 
 **Plan fidelity** — Is every task marked `[x]` actually implemented, and is everything implemented actually marked? A marker without matching code, or code without a matching task, is a finding. Does anything in the diff fall outside the file manifest? Was anything from **Out of scope** built anyway? Does the implementation match the planned call stacks, or did it drift into a different design?
 
@@ -66,7 +64,7 @@ Write one `docs/plans/<feature-slug>/<app-name>.findings.md` per application in 
 Concerns lacking a demonstrable failure. Not findings.
 ```
 
-Documentation and clarity findings are non-blocking unless the plan or brief required the documentation.
+Documentation and clarity findings are non-blocking unless the plan required the documentation.
 
 Report the run verdict — the worst across applications. The orchestrator sets `overview.md` status.
 

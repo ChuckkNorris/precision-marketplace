@@ -1,6 +1,6 @@
 ---
 name: pe-develop
-description: Plan and implement a change end to end for an enterprise-grade codebase, using a subagent per stage. Takes a ticket reference, a pull request, or a plain-language description. Runs the full explore-plan-implement-review pipeline, or a light track straight to implement and review for small changes. Resumes an in-flight run from its plan directory. Use to develop any feature, change, or fix.
+description: Plan and implement a change end to end for an enterprise-grade codebase, using a subagent per stage. Takes a ticket reference, a pull request, or a plain-language description. Runs the explore-plan-implement-review pipeline. Resumes an in-flight run from its plan directory. Use to develop any feature, change, or fix.
 ---
 
 # Precision Engineering Development Workflow
@@ -11,36 +11,20 @@ Each subagent invokes its own procedure skill; you do not need to restate proced
 
 **Argument:** a ticket reference, a pull request reference, or a plain-language description.
 
-## Tracks
-
-**light** skips Explore, Plan, and the plan gate — stages 0, 1, 5, 6, 7 only. **full** runs everything. A run qualifies for light only when *every* one of these holds:
-
-- One application in scope.
-- No new dependency, no schema change, no change to a public API or contract.
-- No cross-cutting design decision — the how is obvious once the what is stated.
-- Small diff, local blast radius.
-- A reviewer could judge it against `brief.md` alone.
-
-Any doubt, or any "mostly", means **full**.
-
-Propose the track at the end of stage 0 and **ask the user to confirm** per [escalation.md](../../shared/escalation.md), naming the checks that decided it. The user may force either track. Unattended, take the judged track without asking and record the deciding checks in `overview.md` — the track question never stalls a run.
-
-**Promote mid-run.** Light-track work that breaches any check stops immediately: tell the user and restart on the full track from stage 2. Never finish a large change on the light track because it is already underway.
-
-Light-track artifacts are `brief.md`, `overview.md`, and the `<app>.findings.md` files — no plan or instructions files. The Developer derives its task checklist into `brief.md` and works from there; the Reviewer judges scope against the brief in place of the plan.
-
 ## Stages
 
-| # | Stage | Owner | Procedure | Produces | Light |
-|---|---|---|---|---|---|
-| 0 | Resolve context | orchestrator | — | `brief.md`, `overview.md` | ✓ |
-| 1 | Branch | orchestrator | — | feature branch | ✓ |
-| 2 | Explore | Explorer | `pe-explore` | `<app>.instructions.md` — `## Current state` | — |
-| 3 | Plan | Planner | `pe-plan` | `<app>.plan.md`, rest of each `<app>.instructions.md` | — |
-| 4 | Plan gate | orchestrator | — | gate | — |
-| 5 | Implement | Developer | `pe-implement` | commits, green gate | ✓ |
-| 6 | Review | Reviewer | `pe-review` | `<app>.findings.md` | ✓ |
-| 7 | Pull request | orchestrator | — | PR | ✓ |
+Every change runs every stage. There is no abbreviated path — a change too small to plan is still planned, and the plan is correspondingly small.
+
+| # | Stage | Owner | Procedure | Produces |
+|---|---|---|---|---|
+| 0 | Resolve context | orchestrator | — | `brief.md`, `overview.md` |
+| 1 | Branch | orchestrator | — | feature branch |
+| 2 | Explore | Explorer | `pe-explore` | `<app>.instructions.md` — `## Current state` |
+| 3 | Plan | Planner | `pe-plan` | `<app>.plan.md`, rest of each `<app>.instructions.md` |
+| 4 | Plan gate | orchestrator | — | gate |
+| 5 | Implement | Developer | `pe-implement` | commits, green gate |
+| 6 | Review | Reviewer | `pe-review` | `<app>.findings.md` |
+| 7 | Pull request | orchestrator | — | PR |
 
 ### 0 - Resolve context
 
@@ -50,8 +34,7 @@ Light-track artifacts are `brief.md`, `overview.md`, and the `<app>.findings.md`
 4. Derive `<feature-slug>`, create `docs/plans/<feature-slug>/`, write `brief.md`.
 5. Determine applications in scope. When ambiguous, ask per [escalation.md](../../shared/escalation.md) — a wrong scope wastes the entire pipeline.
 6. Resolve skills per the schema's resolution rules. Pass resolved config, scope, and skill list into every subagent; **subagents do not re-read config.**
-7. Judge the track against the checks above and confirm it per **Tracks**.
-8. Seed `overview.md` — requirement, in and out of scope, status `planning`, and the deciding track checks. The Planner fills in design, risks, and rollback; on the light track no Planner runs, so also write `## Rollback` as revert by git alone, which the light checks guarantee.
+7. Seed `overview.md` — requirement, in and out of scope, status `planning`. The Planner fills in design, risks, and rollback.
 
 **Seed `overview.md` before any subagent runs.** It is the resume record, and a run that dies before it exists cannot be continued.
 
@@ -98,19 +81,15 @@ Each concurrent Developer commits its own application's tasks. An overlap surfac
 
 Set status `in-progress` when the stage starts. Apply `workflow.gates.implementation` per **Gate resolution** before stage 6.
 
-On the light track, pass the Developer `brief.md` in place of a plan and say the run is light, so it derives its own checklist.
-
 ### 6 - Review
 
 **Confirm the gate evidence first** — yours, because you own git. Every row of the `overview.md` verification table must be green at a commit equal to `HEAD`; that is the gate, and the Reviewer reads it rather than re-runs it. Anything else goes back to the Developer before review starts.
 
 Then run **one Reviewer across every application in scope**, telling it the commit under review. It changes nothing: every finding — a defect, a missed requirement, a standards or documentation gap — comes back to you as a report to route. **You own `overview.md` status**: `complete` when every application approves, `in-review` otherwise.
 
-On the light track, tell the Reviewer the run is light and pass `brief.md` in place of the plan — the same handoff stage 5 makes to the Developer.
-
 On `changes-required`, route blocking findings **back to the Developer** with the finding IDs, then re-run this stage: re-confirm the gate evidence at the new commit and continue the same Reviewer, naming the remediation range — previously reviewed commit to `HEAD` — so it re-judges the fix instead of the branch. Non-blocking findings are reported to the user; route them to the Developer only if the user asks for them.
 
-Cap at two remediation cycles. A third means the plan is wrong: stop and route to the Planner — on the light track, that is the signal to promote and plan properly. Unattended, record the trigger under **Blockers**, set status `blocked`, and stop rather than starting a plan no one can approve.
+Cap at two remediation cycles. A third means the plan is wrong: stop and route to the Planner. Unattended, record the trigger under **Blockers**, set status `blocked`, and stop rather than starting a plan no one can approve.
 
 ### 7 - Pull request
 
@@ -173,9 +152,9 @@ When the owning agent's context is gone, re-hydrate a fresh instance from the pl
 
 - Config is read once, in stage 0, and passed down. Subagents that re-read it drift.
 - The exit gate runs once, in stage 5, and is confirmed by commit SHA thereafter. A stage that re-runs it is paying the run's slowest commands for an answer the verification table already holds.
-- Gates and the stage 0 track confirmation are the only pause points. Never invent one, never skip one. The light track has no plan gate because it has no plan; every other gate applies to both tracks.
+- Gates are the only pause points. Never invent one, never skip one.
 - Every gate resolution is recorded in `## Gates` with who resolved it and the signal. An unrecorded approval cannot be audited and will be re-asked on the next resume.
-- The light track drops planning, never review. Implementation and review run on both tracks.
+- Every stage runs on every change. Never skip Explore or Plan because a change looks small.
 - Never advance past a red gate, an unresolved blocker in `overview.md`, or a task still marked `[~]`.
 - Every artifact lands in `docs/plans/<feature-slug>/`. That directory is the audit record for the run, and the only state a later invocation inherits.
 - Report honestly. A stage skipped, a test failing, a finding unresolved — say so plainly.

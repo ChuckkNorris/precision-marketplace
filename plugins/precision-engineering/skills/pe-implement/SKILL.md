@@ -1,6 +1,6 @@
 ---
 name: pe-implement
-description: Execute an approved development plan task by task - honoring the configured test strategy, tracking task status, committing per task, and exiting only on a green build, tests, lint, and typecheck. Use to implement a plan produced by pe-plan, or a brief on a light-track run.
+description: Execute an approved development plan task by task - honoring the configured test strategy, tracking task status, committing per task, and exiting only on a green build, tests, lint, and typecheck. Use to implement a plan produced by pe-plan.
 ---
 
 # Implement
@@ -13,7 +13,7 @@ The plan directory, the resolved configuration, and the applications in scope. I
 
 ## Method
 
-**Your working documents.** Full track: the checklist in `<app-name>.plan.md`, task detail and file manifest in `<app-name>.instructions.md`. Light track: both are `## Tasks` in `brief.md`. "Checklist" and "task detail" below mean whichever the track supplies.
+**Your working documents.** The checklist in `<app-name>.plan.md`; task detail and file manifest in `<app-name>.instructions.md`.
 
 1. Load every skill resolved for the `implement` step and for each in-scope application, plus the application's `conventions`.
 2. Read `overview.md` and your task detail, including its `## Current state` where present. Read `<app-name>.plan.md` only where a task's `Reference` sends you to a design section for a contract. **Stop and report if any open question is unresolved or `overview.md` lists a blocker.**
@@ -37,24 +37,9 @@ Green `build`, `test`, `lint`, and `typecheck` for every in-scope application us
 
 **A failing gate is not an exit.** Fix the cause. If the cause is a defect in the plan rather than the implementation, stop and report — do not redesign.
 
-## Light-track runs
-
-Told the run is light, there is no plan. Derive `## Tasks` into `brief.md` first — one task per verifiable unit of work, checklist and detail as one entry since you are its only reader. The brief's **In scope** is your manifest.
-
-```markdown
-## Tasks
-- [x] T-001 — Retry transient webhook failures · `a1b2c3d`
-  - **Files:** modify `src/clients/webhook.ts`
-  - **Acceptance:** a 503 retries three times, then surfaces the failure
-  - **Verify:** `dotnet test --filter WebhookClientTests`
-  - **Notes:** what the brief did not anticipate
-```
-
-A brief needing more than a handful of tasks, or whose design is not obvious once written down, was misjudged as light. Stop and report — never plan inside the implementation.
-
 ## Guardrails
 
-- Touching a path absent from the file manifest — on a light-track run, from the brief's stated scope — requires stopping and reporting.
+- Touching a path absent from the file manifest requires stopping and reporting.
 - Never weaken a test, skip a test, or loosen a threshold to reach green.
 - Never mark a task `[x]` without its `Verify` passing. The marker is evidence, not intent.
 - Match surrounding code — its naming, idiom, and comment density. New code should be indistinguishable in style from the precedents the plan's `## Current state` cited.
