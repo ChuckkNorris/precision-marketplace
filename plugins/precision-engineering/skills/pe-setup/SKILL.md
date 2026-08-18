@@ -36,7 +36,8 @@ Flag low-confidence detections explicitly rather than burying them.
 Ask only what detection cannot answer. Use structured questions with a recommended default. Keep to one round:
 
 - **Test strategy** — `tdd`, `test-after`, or `none`
-- **Gates** — which of plan / implementation / PR require human approval
+- **Gates** — which of plan / implementation / PR require human approval. The channel is automatic: in session when attended, on the pull request when not, so never ask which environment the config is for
+- **Continuation** — the pull request trigger tokens, when any gate requires approval
 - **Standards skills** — which apply per application and per workflow step
 - **Conventions** — standards a newcomer could not infer from the code
 - **Tracker** — provider and access method, if detection was inconclusive

@@ -23,10 +23,16 @@ repository:
 
 workflow:
   testStrategy: test-after          # tdd | test-after | none
-  gates:                            # approve = stop for human; auto = proceed
+  gates:                            # approve = a human decides; auto = proceed
     plan: approve
     implementation: auto
     pullRequest: approve
+    channel: auto                   # auto | session | pr — auto follows run attendance
+  continuation:                     # how a gate published to a PR is resolved later
+    trigger: comment                # comment | label | review
+    approveToken: "#plan-approved"
+    reviseToken: "#plan-revise"     # null = any other comment implies revise
+    maxTriggers: 10                 # resolutions allowed on one plan directory
   steps:                            # per-step mandatory skills (see resolution rules)
     explore:   { skills: [] }
     plan:      { skills: [] }
@@ -37,7 +43,7 @@ workflow:
     blockOnLintError: true
     blockOnTypeError: true
   escalation:
-    unattended: block               # block | accept-recommended
+    unattended: block               # block | accept-recommended | pr-comment
 
 tracker:
   provider: none                    # jira | github | azdo | none
@@ -51,6 +57,7 @@ git:
   commitGranularity: per-task       # per-task | squashed
   pr:
     titlePattern: "{ticket}: {summary}"
+    planTitlePattern: "Plan: {ticket} — {summary}"   # plan gate published to a PR
     draft: false
     base: main
     reviewers: []
@@ -87,11 +94,34 @@ applications:                       # required; one entry per deployable/buildab
 - `none` — No test authoring required. Existing tests must still pass.
 
 ### `workflow.gates`
-`approve` stops the workflow and surfaces the artifact for human sign-off. `auto` proceeds without stopping. Gates are the only sanctioned pause points; agents never invent their own. A light-track run has no plan gate, since it produces no plan; `gates.plan` is inert there.
+Gates are the only sanctioned pause points; agents never invent their own. A light-track run has no plan gate, since it produces no plan; `gates.plan` is inert there.
+
+| Mode | Behavior |
+|---|---|
+| `auto` | Proceed without stopping. |
+| `approve` | A human decides. **Attended**, the artifact is presented in session; **unattended**, it is committed and published as a pull request, and approval arrives on a later invocation as a signal on that PR. |
+
+**`approve` needs no environment-specific setting.** Attendance is a property of the run, detected at runtime per [escalation.md](./escalation.md) — the same config drives an interactive session and a cloud agent, and the unattended channel is what makes a run survive a process boundary.
+
+Override with `gates.channel` only to force the pull request channel for an attended run, when a team reviews plans asynchronously by policy:
+
+```yaml
+workflow:
+  gates:
+    channel: auto     # auto | session | pr
+```
+
+### `workflow.continuation`
+Read only when a gate resolves through a pull request. `approveToken` in a pull request comment resolves the pending gate; `reviseToken` — or any other comment carrying feedback, when it is `null` — routes that feedback to the Planner per [pr-feedback.md](./pr-feedback.md).
+
+**Who may approve is decided outside this workflow.** The routine, action, or human invoking the agent has already made that call; the workflow records the resolver, never adjudicates them. Gate a comment trigger on repository permissions before it reaches the agent.
+
+`maxTriggers` bounds the approve-revise loop on one plan directory.
 
 ### `workflow.escalation.unattended`
-Governs runs with no user available (CI, scheduled, headless). `block` records the questions,
-sets status `blocked`, and stops. `accept-recommended` proceeds with each recommended option,
+Governs unattended runs. `block` records the questions,
+sets status `blocked`, and stops. `pr-comment` posts them to the pull request and stops, so the
+answers arrive on the next trigger. `accept-recommended` proceeds with each recommended option,
 recording in `overview.md` that it was auto-accepted and unreviewed — only for runs a human
 reviews before merge. See [escalation.md](./escalation.md).
 

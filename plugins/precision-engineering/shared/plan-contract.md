@@ -11,14 +11,14 @@ This contract carries what more than one agent reads: which files exist, who wri
 | File | Written by | Purpose |
 |---|---|---|
 | `brief.md` | Orchestrator | Normalized requirement, whatever its source. On a light-track run, also the Developer's task checklist. |
-| `overview.md` | Planner (orchestrator on a light-track run), then Developer, then orchestrator | Requirements, scope, cross-cutting design, risks, open questions, run state. |
+| `overview.md` | Orchestrator, then Planner, then Developer, then orchestrator | Requirements, scope, cross-cutting design, risks, open questions, gates, run state. |
 | `<app-name>.plan.md` | Planner, then Developer | One per application in scope. Task checklist and the design a human approves at the gate. |
 | `<app-name>.instructions.md` | Explorer, then Planner, then Developer | One per application in scope. Agent-facing execution detail: current state, file manifest, per-task instructions. |
 | `<app-name>.findings.md` | Reviewer | One per application in scope. Verdict and ranked findings from the adversarial pass. |
 
 **Two tiers per application.** `<app-name>.plan.md` is for the human approving at the gate — what is being built and how it behaves. `<app-name>.instructions.md` is for the agent implementing it with no prior context — where the code lives, which files to touch, what to do per task. Neither carries the other's content.
 
-**One writer per path.** Each Explorer owns one application's instructions file, which is what lets stage 1 run concurrently.
+**One writer per path.** Each Explorer owns one application's instructions file, which is what lets exploration run concurrently.
 
 **Progress lives in the plan.** Task status sits in the checklist that defines the task, run state in `overview.md`. There is no progress file, so nothing drifts out of sync.
 
@@ -78,6 +78,17 @@ Never guess an answer and never soften a question into an assumption to keep the
 Questions reach the user through the orchestrator per [escalation.md](./escalation.md).
 Record who decided — an auto-accepted recommendation is marked as such, never as a user decision.
 
+## Gates
+Each gate's standing decision, and the evidence for it. Absent rows are gates not yet reached.
+
+| Gate | State | Resolved by | Signal |
+|---|---|---|---|
+| plan | approved | @jsmith | <comment URL, or "in session"> |
+
+## Plan feedback
+Review comments routed to the Planner, per [pr-feedback.md](./pr-feedback.md). Marked `[x]`
+once addressed; an entry left `[ ]` blocks approval exactly as an open question does.
+
 ## Blockers
 Empty when unblocked. Any entry halts the workflow.
 
@@ -93,7 +104,9 @@ The Developer records the short SHA each command ran against. Review confirms th
 
 `overview.md` carries **no per-task list**. Task status belongs to the plan file that defines the task.
 
-**Status:** the Planner sets `awaiting-approval`, the Developer `in-review` at its exit gate, and the orchestrator `complete` or `blocked` once it holds the Reviewer's verdict.
+**Status:** the orchestrator seeds `planning`, the Planner sets `awaiting-approval`, the Developer `in-progress` then `in-review`, and the orchestrator `complete` or `blocked` at the end.
+
+**`overview.md` is the continuation record.** It exists before any subagent runs and carries the branch, so a later invocation — a cloud agent resuming after an approval comment, or an agent recovering from a lost context — finds the run by matching its branch and continues from `Status`, `Gates`, and the task checklists. A run whose `overview.md` was never written cannot be resumed.
 
 ## Resuming
 
