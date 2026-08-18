@@ -29,7 +29,9 @@ pe-develop <ticket|description>
   3  [GATE]         plan approval
   4  Orchestrator   create branch
   5  Developer      pe-implement  -> commits; green build/test/lint/typecheck to exit
-  6  Reviewer       pe-review     -> judge the diff -> <app>.findings.md (blocking ones route back to 5)
+                                     (concurrent per app when file manifests do not overlap)
+  6  Reviewer       pe-review     -> judge the diff -> <app>.findings.md
+                                     (blocking findings route back to 5)
   7  [GATE]         PR approval, then push and open PR
 
   light track: 0 -> 4 -> 5 -> 6 -> 7, working from brief.md with no plan
@@ -39,7 +41,11 @@ pe-develop <ticket|description>
 
 Implementation and review run on both tracks, so nothing merges unreviewed either way.
 
-**The Reviewer changes nothing.** Defects, missed requirements, standards violations, and documentation gaps all become findings; the orchestrator routes the blocking ones back to the Developer and re-runs the review. A reviewer that edited the code would be judging its own work.
+**The Reviewer changes nothing.** Defects, missed requirements, standards violations, and documentation gaps all become findings; the orchestrator routes the blocking ones back to the Developer, and the re-review judges the remediation diff alone. A reviewer that edited the code would be judging its own work.
+
+**The exit gate runs once.** The Developer records each `build`, `test`, `lint`, and `typecheck` result against the commit it ran on; the orchestrator confirms that commit is `HEAD`, and the Reviewer reads that evidence rather than re-running the repository's slowest commands. Nothing is approved on unproven green — a verification table that is absent, red, or stale sends the gate back to the Developer.
+
+**Cost is tiered by role.** The Explorer's job is search and citation, so it runs on Sonnet; the Planner, Developer, and Reviewer make judgment calls and run on Opus. Explorers fan out per application, and Developers do too when their manifests do not overlap.
 
 **Questions reach the user through the orchestrator.** Subagents have no user turn, so a subagent composes the question with 2–4 options and a recommendation, and the orchestrator asks it. Unattended runs are governed by `workflow.escalation.unattended`, which defaults to blocking rather than guessing.
 

@@ -21,13 +21,13 @@ Each subagent invokes its own procedure skill; you do not need to restate proced
 - Small diff, local blast radius.
 - A reviewer could judge it against `brief.md` alone.
 
-Any doubt, or any "mostly", means **full**. Over-planning a small change costs one pass; under-planning a large one costs the run.
+Any doubt, or any "mostly", means **full**.
 
 Propose the track at the end of stage 0 and **ask the user to confirm** per [escalation.md](../../shared/escalation.md), naming the checks that decided it. The user may force either track. **With no user available** — headless, scheduled, or CI — take the judged track without asking and record the deciding checks in `overview.md`. The track question never stalls a run.
 
 **Promote mid-run.** Light-track work that breaches any check stops immediately: tell the user and restart on the full track from stage 1. Never finish a large change on the light track because it is already underway.
 
-Light-track artifacts are `brief.md`, `overview.md`, and `<app>.findings.md` — no plan or instructions files. The Developer derives its task checklist into `brief.md` and works from there; the Reviewer judges scope against the brief in place of the plan.
+Light-track artifacts are `brief.md`, `overview.md`, and the `<app>.findings.md` files — no plan or instructions files. The Developer derives its task checklist into `brief.md` and works from there; the Reviewer judges scope against the brief in place of the plan.
 
 ## Stages
 
@@ -73,17 +73,23 @@ Create the branch from `git.branchPattern` off `git.pr.base`. On a dirty working
 
 ### 5 - Implement
 
-Run applications sequentially unless their tasks are provably independent. If `workflow.gates.implementation` is `approve`, stop for sign-off before stage 6.
+Run applications **concurrently** when their file manifests share no path and no task's `Depends on` reaches another application — the plan states both, so this is a check, not a judgment. Otherwise run them sequentially in dependency order.
+
+Each concurrent Developer commits its own application's tasks. An overlap surfacing mid-stage stops both and restarts the stage sequentially.
+
+If `workflow.gates.implementation` is `approve`, stop for sign-off before stage 6.
 
 On the light track, pass the Developer `brief.md` in place of a plan and say the run is light, so it derives its own checklist.
 
 ### 6 - Review
 
-The Reviewer judges the diff and changes nothing. Every finding — a defect, a missed requirement, a standards or documentation gap — comes back to you as a report to route.
+**Confirm the gate evidence first** — yours, because you own git. Every row of the `overview.md` verification table must be green at a commit equal to `HEAD`; that is the gate, and the Reviewer reads it rather than re-runs it. Anything else goes back to the Developer before review starts.
+
+Then run **one Reviewer across every application in scope**, telling it the commit under review. It changes nothing: every finding — a defect, a missed requirement, a standards or documentation gap — comes back to you as a report to route. **You own `overview.md` status**: `complete` when every application approves, `in-review` otherwise.
 
 On the light track, tell the Reviewer the run is light and pass `brief.md` in place of the plan — the same handoff stage 5 makes to the Developer.
 
-On `changes-required`, route blocking findings **back to the Developer** with the finding IDs, then re-run this stage. Non-blocking findings are reported to the user; route them to the Developer only if the user asks for them.
+On `changes-required`, route blocking findings **back to the Developer** with the finding IDs, then re-run this stage: re-confirm the gate evidence at the new commit and continue the same Reviewer, naming the remediation range — previously reviewed commit to `HEAD` — so it re-judges the fix instead of the branch. Non-blocking findings are reported to the user; route them to the Developer only if the user asks for them.
 
 Cap at two remediation cycles. A third means the plan is wrong: stop and route to the Planner — on the light track, that is the signal to promote and plan properly. With no user available, record the trigger under **Blockers**, set status `blocked`, and stop rather than starting a plan no one can approve.
 
@@ -121,6 +127,7 @@ When the owning agent's context is gone, re-hydrate a fresh instance from the pl
 ## Guardrails
 
 - Config is read once, in stage 0, and passed down. Subagents that re-read it drift.
+- The exit gate runs once, in stage 5, and is confirmed by commit SHA thereafter. A stage that re-runs it is paying the run's slowest commands for an answer the verification table already holds.
 - Gates and the stage 0 track confirmation are the only pause points. Never invent one, never skip one. The light track has no plan gate because it has no plan; every other gate applies to both tracks.
 - The light track drops planning, never review. Implementation and review run on both tracks.
 - Never advance past a red gate, an unresolved blocker in `overview.md`, or a task still marked `[~]`.

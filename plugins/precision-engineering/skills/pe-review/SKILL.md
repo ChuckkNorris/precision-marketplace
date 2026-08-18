@@ -9,17 +9,29 @@ Judge the diff; never change it. Everything wrong with it — a defect, a missed
 
 ## Inputs
 
-The plan directory, the diff against the base branch, the resolved configuration, and whether the run is light. Invoked standalone: read `.agents/precision-engineering.config.md` yourself and diff against `git.pr.base`. **Told the run is light, there is no plan** — judge fidelity against `brief.md`. With neither plan nor brief, drop the fidelity lens and say so in the output.
+The plan directory, the diff against the base branch, the resolved configuration, and whether the run is light. One Reviewer covers the whole run — every application in scope, every lens — so cross-application defects surface. Invoked standalone: read `.agents/precision-engineering.config.md` yourself and diff against `git.pr.base`.
 
-**Confirm the exit gate first.** Run `build`, `test`, `lint`, and `typecheck` for every in-scope application and record the results in the `overview.md` verification table. Red is a blocking finding on its own — report it and stop, because a red gate can never be approved.
+**Told the run is light, there is no plan** — judge fidelity against `brief.md`. With neither plan nor brief, drop the fidelity lens and say so in the output.
 
 Load every skill resolved for the `review` step before starting.
 
+### Gate evidence
+
+The exit gate is already run and recorded. Read the `overview.md` verification table:
+
+| Table state | Do |
+|---|---|
+| Green, every commit at `HEAD` | That is the gate. Proceed to the lenses. |
+| Missing, red, or a commit behind `HEAD` | Raise a blocking finding and stop. |
+| Invoked standalone | Run the gate yourself for every in-scope application and record it. |
+
 ## Lenses
 
-Examine the diff through each lens. Assume it is broken until the diff shows otherwise.
+Examine the diff through every lens. Assume it is broken until the diff shows otherwise.
 
-On a light-track run, `brief.md` supplies what the plan would: its **In scope** bounds the diff in place of the file manifest, and its **Stated acceptance criteria** carry the requirements. A lens check naming a plan section that does not exist is dropped, never reported as a finding. Judge fidelity against the requirement and acceptance criteria, not the `## Tasks` checklist — the Developer derived that checklist from its own work, so it cannot evidence completeness.
+The lenses interact — a test gap that is really a defect, a standards violation that opens a hole, fidelity drift that explains a bug. Report each root cause once, under the lens that best explains it, rather than the same fault once per lens that can see it.
+
+On a light-track run `brief.md` replaces the plan: **In scope** bounds the diff in place of the file manifest, and **Stated acceptance criteria** carry the requirements. Judge fidelity against those, never the `## Tasks` checklist — the Developer derived it from its own work, so it cannot evidence completeness. A lens check naming a plan section that does not exist is dropped, not reported as a finding.
 
 **Plan fidelity** — Is every task marked `[x]` actually implemented, and is everything implemented actually marked? A marker without matching code, or code without a matching task, is a finding. Does anything in the diff fall outside the file manifest? Was anything from **Out of scope** built anyway? Does the implementation match the planned call stacks, or did it drift into a different design?
 
@@ -41,7 +53,7 @@ Write one `docs/plans/<feature-slug>/<app-name>.findings.md` per application in 
 # <app-name> — Review
 
 **Verdict:** approve | changes-required
-**Lenses applied:** plan-fidelity, correctness, tests, security, standards, documentation
+**Reviewed commit:** <short SHA the diff was judged at>
 
 ## Findings
 ### F-001 — <one-line defect> · blocking | non-blocking
@@ -54,21 +66,25 @@ Write one `docs/plans/<feature-slug>/<app-name>.findings.md` per application in 
 Concerns lacking a demonstrable failure. Not findings.
 ```
 
-Name only the lenses actually applied — `brief-fidelity` in place of `plan-fidelity` on a light-track run.
-
 Documentation and clarity findings are non-blocking unless the plan or brief required the documentation.
 
-The run's verdict is the worst of the per-application verdicts. Set `overview.md` status to `complete` only when **every** application approves; leave it `in-review` if any returns `changes-required`.
+Report the run verdict — the worst across applications. The orchestrator sets `overview.md` status.
 
 ## Re-running after remediation
 
-The Developer resolves blocking findings and routes back here. Re-run every lens on the updated diff, and carry forward any finding that is still unresolved with its original ID.
+The Developer resolves blocking findings and routes back. Judge the **remediation range** the orchestrator names — your previously reviewed commit to `HEAD` — not the whole branch again:
+
+- Every finding you carried forward, against its location, keeping its original ID.
+- Every file the remediation changed, through every lens.
+
+A remediation reaching files outside both sets means the Developer worked beyond the findings. That is a fidelity finding, and the one case that earns a full re-run across the branch diff.
 
 ## Guardrails
 
-- The diff is read-only. Never edit source, tests, or documentation — every improvement is a finding the Developer applies. Plan-directory artifacts are the only files you write.
+- The diff is read-only. Never edit source, tests, or documentation — every improvement is a finding the Developer applies.
+- The findings files are the only files you write.
+- Never approve on unproven green — a verification table absent, red, or stale against `HEAD` is a blocking finding.
 - Every finding names its location and what is wrong; correctness and security findings also carry a concrete failure scenario. Anything you cannot substantiate belongs under **Questions**.
 - Verify before reporting; a plausible false positive costs more cycles than the defect would have.
 - Absent findings, say so plainly. Never manufacture findings to appear thorough.
 - Style preferences the configured skills do not mandate are not findings.
-- Never approve on a red gate. The verification table must show green for every in-scope application.

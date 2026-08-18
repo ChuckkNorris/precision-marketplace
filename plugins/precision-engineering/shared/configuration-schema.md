@@ -99,7 +99,7 @@ reviews before merge. See [escalation.md](./escalation.md).
 Applies the named skills to that step regardless of which app is in scope. Use for cross-cutting standards (e.g. `security-review` on `review`).
 
 ### `applications[].type`
-Selects the plan template the Planner structures that app's design sections from, per the mapping in [plan-contract.md](./plan-contract.md). `fullstack` emits both templates' sections in a single plan file — this is how MVC and monolith repos are modeled. Declare one application, not two.
+Selects the plan template the Planner structures that app's design sections from. `fullstack` emits both templates' sections in a single plan file — this is how MVC and monolith repos are modeled. Declare one application, not two.
 
 ### `applications[].commands`
 Only `build` and `test` are needed for a minimal setup. Every declared command must have been validated by `/pe-setup`. Omit a command rather than declaring one that does not work.

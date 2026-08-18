@@ -18,9 +18,7 @@ Escalate when **different reasonable answers lead to materially different work**
 | Scope boundaries a reasonable reader would draw differently | Matters of taste the configured skills do not mandate |
 | Conflicts between the ticket and the codebase's established pattern | Anything you could resolve by reading one more file |
 
-**Over-escalation defeats the workflow.** An agent that asks about everything is worse than one that decides — the user delegated the work to avoid answering these. Before escalating, confirm the answer is not in the code, the config, or the brief. If uncertain but the stakes are low, pick the sensible default, state the assumption, and continue.
-
-Never escalate to transfer responsibility for a decision you are equipped to make.
+**Before escalating,** confirm the answer is not in the code, the config, or the brief — an agent that asks about everything is worse than one that decides. Uncertain but low stakes: pick the sensible default, state the assumption, and continue. Never escalate to hand off a decision you are equipped to make.
 
 ## Question payload
 

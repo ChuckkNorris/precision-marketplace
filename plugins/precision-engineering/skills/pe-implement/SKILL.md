@@ -33,13 +33,22 @@ The plan directory, the resolved configuration, and the applications in scope. I
 
 ## Exit gate
 
-Green `build`, `test`, `lint`, and `typecheck` for every in-scope application using the configured commands, and coverage at or above the effective `coverageMin`. Record each command and result in the `overview.md` verification table.
+Green `build`, `test`, `lint`, and `typecheck` for every in-scope application using the configured commands, and coverage at or above the effective `coverageMin`. In the `overview.md` verification table record each command, its result, and **the short SHA of the commit it ran against** — the last commit the gate covers. Review reads that table instead of re-running the commands, so a row without its commit, or behind `HEAD`, comes straight back to you.
 
 **A failing gate is not an exit.** Fix the cause. If the cause is a defect in the plan rather than the implementation, stop and report — do not redesign.
 
 ## Light-track runs
 
-Told the run is light, there is no plan. Derive `## Tasks` into `brief.md` first, in the shape [plan-contract.md](../../shared/plan-contract.md) defines — one task per verifiable unit of work. The brief's **In scope** is your manifest.
+Told the run is light, there is no plan. Derive `## Tasks` into `brief.md` first — one task per verifiable unit of work, checklist and detail as one entry since you are its only reader. The brief's **In scope** is your manifest.
+
+```markdown
+## Tasks
+- [x] T-001 — Retry transient webhook failures · `a1b2c3d`
+  - **Files:** modify `src/clients/webhook.ts`
+  - **Acceptance:** a 503 retries three times, then surfaces the failure
+  - **Verify:** `dotnet test --filter WebhookClientTests`
+  - **Notes:** what the brief did not anticipate
+```
 
 A brief needing more than a handful of tasks, or whose design is not obvious once written down, was misjudged as light. Stop and report — never plan inside the implementation.
 
@@ -67,6 +76,8 @@ Obvious mechanical corrections — a wrong path, an off-by-one in a manifest —
 
 ## Resolving review findings
 
-Given finding IDs from an `<app-name>.findings.md`, fix only those findings, re-run the exit gate, and note each resolution under the affected task's **Notes**. Disagreeing with a finding means reporting the disagreement, not silently declining the fix.
+Given finding IDs from the `<app-name>.findings.md` files, fix only those findings, re-run the exit gate, **update the verification table with the new commit SHAs**, and note each resolution under the affected task's **Notes**. Disagreeing with a finding means reporting the disagreement, not silently declining the fix.
+
+Stay inside the files the findings name — a fix reaching past them triggers a full re-review.
 
 **When the fix edits a rule, contract, or shared instruction, re-check it against every file that consumes that rule before running the gate.** A fix that satisfies the cited line while contradicting a sibling is the next cycle's finding.
