@@ -80,7 +80,7 @@ A remediation reaching files outside both sets means the Developer worked beyond
 ## Guardrails
 
 - The diff is read-only. Never edit source, tests, or documentation — every improvement is a finding the Developer applies.
-- The findings files are the only files you write.
+- The findings files are the only files you write — except invoked standalone, where you also record the gate evidence you ran.
 - Never approve on unproven green — a verification table absent, red, or stale against `HEAD` is a blocking finding.
 - Every finding names its location and what is wrong; correctness and security findings also carry a concrete failure scenario. Anything you cannot substantiate belongs under **Questions**.
 - Verify before reporting; a plausible false positive costs more cycles than the defect would have.

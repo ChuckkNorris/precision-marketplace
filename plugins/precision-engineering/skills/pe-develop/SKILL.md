@@ -28,23 +28,24 @@ Every change runs every stage. There is no abbreviated path — a change too sma
 
 ### 0 - Resolve context
 
-1. **Resume first.** Look for a plan directory under `docs/plans/` whose `overview.md` records the current branch — given a pull request reference, check out its branch first. Found one: honour the resume table below and skip the rest of this stage. Those files are authoritative over anything you would otherwise re-derive.
-2. Read [`.agents/precision-engineering.config.md`](../../precision-engineering.config.md) against [configuration-schema.md](../../shared/configuration-schema.md). **If absent, stop and tell the user to run `/pe-setup`.** Never infer commands or conventions.
-3. Normalize the argument into a brief per [ticket-ingestion.md](../../shared/ticket-ingestion.md).
-4. Derive `<feature-slug>`, create `docs/plans/<feature-slug>/`, write `brief.md`.
-5. Determine applications in scope. When ambiguous, ask per [escalation.md](../../shared/escalation.md) — a wrong scope wastes the entire pipeline.
-6. Resolve skills per the schema's resolution rules. Pass resolved config, scope, and skill list into every subagent; **subagents do not re-read config.**
-7. Seed `overview.md` — requirement, in and out of scope, status `planning`. The Planner fills in design, risks, and rollback.
+1. Read [`.agents/precision-engineering.config.md`](../../precision-engineering.config.md) against [configuration-schema.md](../../shared/configuration-schema.md). **If absent, stop and tell the user to run `/pe-setup`.** Never infer commands or conventions.
+2. **Locate the run.** Look for a plan directory under `docs/plans/` whose `overview.md` records the current branch — given a pull request reference, check out its branch first.
+3. **No plan directory — a new run.** Normalize the argument into a brief per [ticket-ingestion.md](../../shared/ticket-ingestion.md); derive `<feature-slug>`, create `docs/plans/<feature-slug>/`, and write `brief.md`; determine applications in scope, asking per [escalation.md](../../shared/escalation.md) when ambiguous, since a wrong scope wastes the entire pipeline; then seed `overview.md` — requirement, in and out of scope, apps in scope, status `planning`. The Planner fills in design, risks, and rollback.
+4. **A plan directory — a resume.** Take applications in scope from `overview.md`'s **Apps in scope**. Never re-derive it: the plan was built against that scope, and a fresh judgment that disagrees with it invalidates the plan.
+5. Resolve skills per the schema's resolution rules. Pass resolved config, scope, and skill list into every subagent; **subagents do not re-read config.**
+
+**Steps 1, 2, and 5 run on every invocation.** A resumed run needs config, scope, and skills exactly as a new one does — subagents never re-read them, so a resume that skips this stage reaches Implement with no commands and no standards.
 
 **Seed `overview.md` before any subagent runs.** It is the resume record, and a run that dies before it exists cannot be continued.
 
 #### Resuming
 
-| Status found | Resume at |
+Continue from the located run's status:
+
+| Status | Continue at |
 |---|---|
-| *(no plan directory)* | Stage 0, from step 2 |
-| `planning` | Stage 2 — Explore, unless `## Current state` is already populated |
-| `awaiting-approval`, plan gate approved | Stage 5 |
+| `planning` | Stage 2 — or stage 3, where every in-scope application's `## Current state` is already populated |
+| `awaiting-approval`, plan gate approved in `## Gates` | Stage 5 |
 | `awaiting-approval`, feedback present | Planner revision per **Continuation** |
 | `in-progress` | Stage 5, from the first task marked `[~]` or `[ ]` |
 | `in-review` | Stage 6 |
@@ -79,7 +80,7 @@ Run applications **concurrently** when their file manifests share no path and no
 
 Each concurrent Developer commits its own application's tasks. An overlap surfacing mid-stage stops both and restarts the stage sequentially.
 
-Set status `in-progress` when the stage starts. Apply `workflow.gates.implementation` per **Gate resolution** before stage 6.
+Set status `in-progress` when the stage starts, and record each Developer's returned exit-gate rows in the `overview.md` verification table as it finishes — concurrent Developers return their results rather than writing that file. Apply `workflow.gates.implementation` per **Gate resolution** before stage 6.
 
 ### 6 - Review
 
@@ -114,10 +115,12 @@ Never downgrade a gate because its channel is inconvenient: an unattended run do
 
 Cloud, scheduled, and headless runs re-enter through stage 0's resume check, and resolve their pending gates by a signal on the pull request rather than by a turn in this conversation.
 
-1. **Claim the run.** Apply the `pe:running` label before working, and exit immediately if it is already present — another agent holds this branch.
+1. **Claim the run.** Apply `workflow.continuation.claimLabel` before working. Already present: exit immediately, unless the platform's timeline shows it applied more than `claimTimeoutMinutes` ago — a claim that old belongs to an agent that died, so reclaim it and note the takeover. Read that age from the platform, never from anything an agent wrote: a crashed agent's own timestamp is exactly what cannot be trusted.
 2. **Read the signal.** `workflow.continuation.approveToken` in a comment approves the pending gate; `reviseToken`, or any other comment carrying plan feedback, means revise. Record state, resolver, and the comment URL in `## Gates`.
 3. **Revise, never restart.** Feedback routes to the Planner per [pr-feedback.md](../../shared/pr-feedback.md). Re-commit, leave the gate `pending`, and stop — a revision is not an approval.
-4. **Release the label** when you stop, whatever the outcome.
+4. **Release the claim on every exit path** — finishing, stopping at a gate, stopping on a blocker, and failing. A stuck claim is recovered by removing the label by hand.
+
+The claim prevents wasted parallel work, not corruption: two agents on one branch already collide at push time, where git rejects the non-fast-forward. That is why reclaiming an expired one is safe.
 
 **Authorization is not yours.** Whoever invoked you has already decided the commenter may approve. Record who; never judge whether they could.
 
@@ -150,7 +153,8 @@ When the owning agent's context is gone, re-hydrate a fresh instance from the pl
 
 ## Guardrails
 
-- Config is read once, in stage 0, and passed down. Subagents that re-read it drift.
+- Config is read once, in stage 0, and passed down. Subagents that re-read it drift. Stage 0 runs its config, scope, and skill resolution on a resume too.
+- After the plan gate, **only you write `overview.md`** — status, verification rows, blockers, and gates. Subagents return those facts; you record them. Transcribing what a subagent returns is run state, which you own, not the subagent's work.
 - The exit gate runs once, in stage 5, and is confirmed by commit SHA thereafter. A stage that re-runs it is paying the run's slowest commands for an answer the verification table already holds.
 - Gates are the only pause points. Never invent one, never skip one.
 - Every gate resolution is recorded in `## Gates` with who resolved it and the signal. An unrecorded approval cannot be audited and will be re-asked on the next resume.

@@ -11,14 +11,14 @@ This contract carries what more than one agent reads: which files exist, who wri
 | File | Written by | Purpose |
 |---|---|---|
 | `brief.md` | Orchestrator | Normalized requirement, whatever its source. |
-| `overview.md` | Orchestrator, then Planner, then Developer, then orchestrator | Requirements, scope, cross-cutting design, risks, open questions, gates, run state. |
+| `overview.md` | Orchestrator, then Planner, then the orchestrator alone | Requirements, scope, cross-cutting design, risks, open questions, gates, run state. |
 | `<app-name>.plan.md` | Planner, then Developer | One per application in scope. Task checklist and the design a human approves at the gate. |
 | `<app-name>.instructions.md` | Explorer, then Planner, then Developer | One per application in scope. Agent-facing execution detail: current state, file manifest, per-task instructions. |
 | `<app-name>.findings.md` | Reviewer | One per application in scope. Verdict and ranked findings from the adversarial pass. |
 
 **Two tiers per application.** `<app-name>.plan.md` is for the human approving at the gate — what is being built and how it behaves. `<app-name>.instructions.md` is for the agent implementing it with no prior context — where the code lives, which files to touch, what to do per task. Neither carries the other's content.
 
-**One writer per path.** Each Explorer owns one application's instructions file, which is what lets exploration run concurrently.
+**One writer per path.** Each Explorer owns one application's instructions file, and each Developer its own application's plan and instructions files — which is what lets those stages run concurrently. `overview.md` spans applications, so after the plan gate only the orchestrator writes it: subagents return status, verification rows, and blockers for it to record.
 
 **Progress lives in the plan.** Task status sits in the checklist that defines the task, run state in `overview.md`. There is no progress file, so nothing drifts out of sync.
 
@@ -91,18 +91,18 @@ once addressed; an entry left `[ ]` blocks approval exactly as an open question 
 Empty when unblocked. Any entry halts the workflow.
 
 ## Verification
-Exit-gate evidence, appended by the Developer.
+Exit-gate evidence. The Developer runs the gate and returns it; the orchestrator records it.
 
 | App | Command | Commit | Result |
 |---|---|---|---|
 | api | `pnpm -C apps/api test` | `a1b2c3d` | pass |
 ```
 
-The Developer records the short SHA each command ran against. Review confirms those SHAs against `HEAD` rather than re-running the commands, so a row without its commit is worth nothing.
+Each row carries the short SHA its command ran against. Review confirms those SHAs against `HEAD` rather than re-running the commands, so a row without its commit is worth nothing.
 
 `overview.md` carries **no per-task list**. Task status belongs to the plan file that defines the task.
 
-**Status:** the orchestrator seeds `planning`, the Planner sets `awaiting-approval`, the Developer `in-progress` then `in-review`, and the orchestrator `complete` or `blocked` at the end.
+**Status:** the orchestrator seeds `planning` and the Planner sets `awaiting-approval`. From the plan gate onward the orchestrator owns every transition — `in-progress`, `in-review`, `complete`, `blocked` — because the stages that follow can run concurrently.
 
 **`overview.md` is the continuation record.** It exists before any subagent runs and carries the branch, so a later invocation — a cloud agent resuming after an approval comment, or an agent recovering from a lost context — finds the run by matching its branch and continues from `Status`, `Gates`, and the task checklists. A run whose `overview.md` was never written cannot be resumed.
 

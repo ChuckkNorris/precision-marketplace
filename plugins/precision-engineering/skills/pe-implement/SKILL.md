@@ -27,13 +27,13 @@ The plan directory, the resolved configuration, and the applications in scope. I
    - Run the task's `Verify` command. **Only once it passes**, mark the task `[x]`.
    - Record any decision the plan did not anticipate under that task's **Notes**.
 4. Commit per `git.commitGranularity` — `per-task` commits after each verified task using `git.commitConvention`; `squashed` defers to the end. Append the short SHA to the task's checklist entry.
-5. After the final task, run the exit gate and set `overview.md` status to `in-review`.
+5. After the final task, run the exit gate and **return** its results. The orchestrator records status and verification — Developers on other applications may be writing concurrently, so `overview.md` has one writer. Invoked standalone, record it yourself.
 
 **Update markers as status changes, never batched at the end.** The checklist is the resumption record: a task left `[~]` is how the next agent knows where work was interrupted.
 
 ## Exit gate
 
-Green `build`, `test`, `lint`, and `typecheck` for every in-scope application using the configured commands, and coverage at or above the effective `coverageMin`. In the `overview.md` verification table record each command, its result, and **the short SHA of the commit it ran against** — the last commit the gate covers. Review reads that table instead of re-running the commands, so a row without its commit, or behind `HEAD`, comes straight back to you.
+Green `build`, `test`, `lint`, and `typecheck` for every in-scope application using the configured commands, and coverage at or above the effective `coverageMin`. Return each command, its result, and **the short SHA of the commit it ran against** — the last commit the gate covers — for the orchestrator to record in the `overview.md` verification table. Review reads that table instead of re-running the commands, so a row without its commit, or behind `HEAD`, comes straight back to you.
 
 **A failing gate is not an exit.** Fix the cause. If the cause is a defect in the plan rather than the implementation, stop and report — do not redesign.
 
@@ -45,7 +45,7 @@ Green `build`, `test`, `lint`, and `typecheck` for every in-scope application us
 - Match surrounding code — its naming, idiom, and comment density. New code should be indistinguishable in style from the precedents the plan's `## Current state` cited.
 - Every comment explains *why* — the rationale, the constraint, the rejected alternative. The code already states what it does, so a comment restating that is noise that goes stale. Keep each under 200 characters; a reason needing more than that belongs in the name, the structure, or the task's **Notes**.
 - Never commit secrets, credentials, or artifacts the repository ignores.
-- Blocked mid-task? Leave the marker `[~]`, add the reason to `overview.md` **Blockers**, set status to `blocked`, and report.
+- Blocked mid-task? Leave the marker `[~]` and report the reason as a blocker. The orchestrator records it in `overview.md` and sets status.
 
 ## Escalation
 

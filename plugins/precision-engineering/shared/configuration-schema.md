@@ -32,6 +32,8 @@ workflow:
     trigger: comment                # comment | label | review
     approveToken: "#plan-approved"
     reviseToken: "#plan-revise"     # null = any other comment implies revise
+    claimLabel: "pe:running"        # applied while an agent holds the branch
+    claimTimeoutMinutes: 60         # a claim older than this is treated as abandoned
     maxTriggers: 10                 # resolutions allowed on one plan directory
   steps:                            # per-step mandatory skills (see resolution rules)
     explore:   { skills: [] }
@@ -116,7 +118,7 @@ Read only when a gate resolves through a pull request. `approveToken` in a pull 
 
 **Who may approve is decided outside this workflow.** The routine, action, or human invoking the agent has already made that call; the workflow records the resolver, never adjudicates them. Gate a comment trigger on repository permissions before it reaches the agent.
 
-`maxTriggers` bounds the approve-revise loop on one plan directory.
+`claimLabel` is how one agent tells another that it holds the branch; `claimTimeoutMinutes` is how long that claim survives before an agent that crashed without releasing it can be superseded. Judge age from the platform's own record of when the label was applied. `maxTriggers` bounds the approve-revise loop on one plan directory.
 
 ### `workflow.escalation.unattended`
 Governs unattended runs. `block` records the questions,
