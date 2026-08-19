@@ -42,6 +42,8 @@ Ask only what detection cannot answer. Use structured questions with a recommend
 - **Conventions** — standards a newcomer could not infer from the code
 - **Tracker** — provider and access method, if detection was inconclusive
 
+On a re-run, ask only about keys new to the schema version (see [Re-running](#re-running)) and detections the user needs to correct — never re-ask a settled value.
+
 ## 4 - Validate
 
 **Run every detected command.** A config full of plausible commands that do not execute is worse than an empty one — it fails deep inside a later `/pe-develop` run rather than here.
@@ -60,6 +62,7 @@ Report: applications detected, commands validated, commands dropped and why, and
 
 Idempotent by requirement. On an existing config:
 
+- **Reconcile the schema version first.** Compare the config's `version` against the current one in [configuration-schema.md](../../shared/configuration-schema.md). If the config is older, read that file's Versioning table and, for every key added since: adopt the documented default where detection or the default settles it, and **ask the user for the rest** — a value that is a policy choice, not a repository fact, has no default worth guessing. Then write the current `version`. Report each key adopted and each key asked about. A config already at the current version skips this step; never rewrite `version` without having reconciled the keys behind it.
 - **Preserve** every human-authored value — conventions, gates, skills, tracker settings, and any key not in the schema. Extensibility is the point; unknown keys survive untouched.
 - **Refresh** detected values, and report each change as a diff for confirmation rather than applying it silently.
 - **Report** applications that appeared or disappeared, and commands that stopped working.

@@ -9,13 +9,14 @@ Unknown keys are preserved, never discarded — the config is extensible by desi
 - **Missing config** — halt and instruct the user to run `/pe-setup`. Never guess commands.
 - **Missing optional key** — use the documented default below.
 - **Missing required key** (`version`, `applications[].name`, `applications[].path`) — halt and report which key.
+- **Stale `version`** — the config declares a version older than this file. Never halt: apply the documented default for every key added since, report the drift, and recommend `/pe-setup` to reconcile it. Only a config whose `version` is *absent* halts.
 - **Skills** resolve in this order, all loaded, later entries never replace earlier ones: `applications[].skills` (mandatory for that app) → `workflow.steps.<step>.skills` (mandatory for that step) → agent-discovered skills (optional).
 - **Commands** are executed verbatim from repo root. If a declared command is absent for a step that requires it, halt and report — do not substitute a guess.
 
 ## Schema
 
 ```yaml
-version: 1                          # required; schema version
+version: 2                          # required; schema version — see Versioning
 
 repository:
   strategy: monorepo                # monorepo | polyrepo
@@ -136,6 +137,26 @@ Selects the plan template the Planner structures that app's design sections from
 ### `applications[].commands`
 Only `build` and `test` are needed for a minimal setup. Every declared command must have been validated by `/pe-setup`. Omit a command rather than declaring one that does not work.
 
+## Versioning
+
+`version` in a repository's config records the schema it was written against. This file's `version` is the current one.
+
+**Bump it whenever this file changes in a way a config cannot absorb silently:**
+
+| Change | Bump | Why |
+|---|---|---|
+| New key with a documented default | yes | `/pe-setup` needs to know to offer it; the default keeps old configs working |
+| New allowed value on an existing key | no | Old configs stay valid unchanged |
+| Key renamed, removed, or its meaning changed | yes | Old configs are wrong, not merely incomplete |
+| Wording, examples, or field reference prose | no | Contract unchanged |
+
+Every bump adds a row below, naming each key involved. That list is the only input `/pe-setup` has when reconciling a stale config — an unrecorded change is invisible to it.
+
+| Version | Added / changed |
+|---|---|
+| 1 | Initial schema. |
+| 2 | Added `workflow.gates.channel`, `workflow.continuation` (`trigger`, `approveToken`, `reviseToken`, `claimLabel`, `claimTimeoutMinutes`, `maxTriggers`), and `git.pr.planTitlePattern`. Added `pr-comment` to `workflow.escalation.unattended`. All additive with defaults; a version 1 config runs unchanged on defaults. |
+
 ## Extending the schema
 
-Add new top-level keys freely. To make a new key meaningful to the workflow, reference it from the agent that consumes it and document it here. Agents treat this file as the contract, so an undocumented key is inert but harmless.
+Add new top-level keys freely. To make a new key meaningful to the workflow, reference it from the agent that consumes it, document it here, and record it under Versioning. Agents treat this file as the contract, so an undocumented key is inert but harmless.
