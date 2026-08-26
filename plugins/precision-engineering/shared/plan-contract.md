@@ -11,6 +11,7 @@ This contract carries what more than one agent reads: which files exist, who wri
 | File | Written by | Purpose |
 |---|---|---|
 | `brief.md` | Orchestrator | Normalized requirement, whatever its source. |
+| `run-context.md` | Orchestrator | Resolved configuration, applications in scope, and each application's skill list. Written once at stage 0; subagents read it instead of the config file. |
 | `overview.md` | Orchestrator, then Planner, then the orchestrator alone | Requirements, scope, cross-cutting design, risks, open questions, gates, run state. |
 | `<app-name>.recon.md` | Explorer | One per application in scope. Current state of the code the change touches. Written before any design exists and **never edited after**. |
 | `<app-name>.plan.md` | Planner, then Developer | One per application in scope. The design a human approves at the gate, and the task checklist. |
@@ -34,6 +35,8 @@ The Developer sets `[~]` when it begins a task and `[x]` only once that task's `
 
 **Task anatomy.** Every task carries `Depends on`, `Change`, `Acceptance`, `Verify`, and `Notes`. The Planner writes all but `Notes`, which the Developer appends for what the plan did not anticipate. Task IDs are globally unique across the plan directory, not per file.
 
+`Depends on` tags every edge reaching another application `contract:` or `runtime:`. Implementation builds its concurrency schedule from those tags, so they are scheduling instructions rather than commentary.
+
 ## `overview.md`
 
 ```markdown
@@ -56,8 +59,17 @@ deprioritized. Adjacent problems noticed during planning belong here, not in sco
 ## Design
 Cross-cutting decisions only — anything spanning more than one application, or
 any choice a reader would otherwise question. Per-app detail belongs in the app plan.
-Integration points crossing an application boundary are recorded here, since they
-belong to no single app plan.
+
+## Interface contract
+Every interface crossing an application boundary, fixed verbatim and numbered so a task's
+`Depends on` can cite one: wire shapes, routes, accessible names, copy strings, error shapes.
+
+| # | Contract | Producer | Consumer |
+|---|---|---|---|
+| I1 | `GET /orders` -> `200 { "orders": [...] }`; empty is `200` with an empty array, never `404` | api T-004 | web T-012 |
+
+What is fixed here can be built against concurrently. What is left to "agree on a shape later"
+serializes every application that shares it, so vagueness here is measured in wall-clock.
 
 ## Risks
 | Risk | Likelihood | Mitigation |
@@ -98,7 +110,7 @@ Exit-gate evidence. The Developer runs the gate and returns it; the orchestrator
 | api | `pnpm -C apps/api test` | `a1b2c3d` | pass |
 ```
 
-Each row carries the short SHA its command ran against. Review confirms those SHAs against `HEAD` rather than re-running the commands, so a row without its commit is worth nothing.
+Each row carries the short SHA its command ran against. The orchestrator confirms every row at `HEAD` before review — re-running only the rows whose application changed since — so a row without its commit is worth nothing.
 
 `overview.md` carries **no per-task list**. Task status belongs to the plan file that defines the task.
 

@@ -9,7 +9,7 @@ Establish what the codebase currently does in the area a change will touch. Fact
 
 ## Inputs
 
-The brief, the resolved configuration, and the application in scope. One Explorer covers one application. Invoked standalone: take the area from the user's request and read `.agents/precision-engineering.config.md` for scope.
+The brief, `run-context.md` for the resolved configuration and skills, and the application in scope. One Explorer covers one application. Invoked standalone: take the area from the user's request and read `.agents/precision-engineering.config.md` for scope.
 
 ## Method
 

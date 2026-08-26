@@ -23,14 +23,16 @@ Each stage is also invocable on its own — `pe-explore`, `pe-plan`, `pe-impleme
 
 ```
 pe-develop <ticket|pr|description>
-  0  Orchestrator   load config, normalize ticket -> brief.md + overview.md
+  0  Orchestrator   load config -> run-context.md, start installs,
+                    normalize ticket -> brief.md + overview.md
                     (or resume: match overview.md to the current branch, jump to its status)
   1  Orchestrator   create branch
   2  Explorer       pe-explore    -> <app>.recon.md  (one per app, concurrent)
   3  Planner        pe-plan       -> <app>.plan.md
   4  [GATE]         plan approval — in session, or published as a draft PR
   5  Developer      pe-implement  -> commits; green build/test/lint/typecheck to exit
-                                     (concurrent per app when no dependency crosses apps)
+                                     (scheduled in waves by task; `contract:` deps
+                                      run concurrently, `runtime:` deps are barriers)
   6  Reviewer       pe-review     -> judge the diff -> <app>.findings.md
                                      (blocking findings route back to 5)
   7  [GATE]         PR approval, then mark ready (or push and open)

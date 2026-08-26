@@ -9,7 +9,7 @@ Implement the plan exactly, leaving the repository verifiably green.
 
 ## Inputs
 
-The plan directory, the resolved configuration, and the applications in scope. Invoked standalone: read `.agents/precision-engineering.config.md` yourself and locate the plan under `docs/plans/`.
+The plan directory, `run-context.md` for the resolved configuration and skills, and the applications in scope — plus the specific task IDs to implement, where the orchestrator scheduled a subset. Given a subset, implement those tasks and no others: the tasks left out are waiting on a barrier you cannot see. Invoked standalone: read `.agents/precision-engineering.config.md` yourself and locate the plan under `docs/plans/`.
 
 ## Method
 
@@ -23,9 +23,9 @@ The plan directory, the resolved configuration, and the applications in scope. I
      - `tdd` — write the test, run it, confirm it fails *for the intended reason*, then implement to green.
      - `test-after` — implement, then write tests covering the acceptance criteria.
      - `none` — implement; existing tests must still pass.
-   - Run the task's `Verify` command. **Only once it passes**, mark the task `[x]`.
+   - Run the task's `Verify` command — the plan chose the cheapest command that catches this task failing, so run that one rather than reaching for the full gate. **Only once it passes**, mark the task `[x]`.
    - Record any decision the plan did not anticipate under that task's **Notes**.
-4. Commit per `git.commitGranularity` — `per-task` commits after each verified task using `git.commitConvention`; `squashed` defers to the end. Append the short SHA to the task's checklist entry.
+4. Stage only your own application's paths — a Developer on another application may be committing to this branch concurrently, so `git add -A` sweeps in its half-finished work. Commit per `git.commitGranularity` — `per-task` commits after each verified task using `git.commitConvention`; `squashed` defers to the end. Append the short SHA to the task's checklist entry.
 5. After the final task, run the exit gate and **return** its results. The orchestrator records status and verification — Developers on other applications may be writing concurrently, so `overview.md` has one writer. Invoked standalone, record it yourself.
 
 **Update markers as status changes, never batched at the end.** The checklist is the resumption record: a task left `[~]` is how the next agent knows where work was interrupted.

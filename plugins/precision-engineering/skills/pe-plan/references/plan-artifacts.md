@@ -61,7 +61,7 @@ Every task is independently implementable and independently verifiable. It state
 
 ```markdown
 ### T-003 — Add rate limit middleware
-- **Depends on:** T-001
+- **Depends on:** T-001 - `contract:` gateway T-010 (the 429 body, fixed as I2)
 - **Change:** Token-bucket limiter, 100 req/min per API key, 429 with `Retry-After`.
   Sits in the request pipeline ahead of routing, per **Endpoints → Create Order**.
 - **Acceptance:** 101st request within a minute returns 429; counter resets after 60s;
@@ -73,9 +73,9 @@ Every task is independently implementable and independently verifiable. It state
 Rules:
 
 - Every task in the details section has a matching checklist entry in `## Tasks`, and vice versa.
-- `Depends on` is honest and complete. It is what lets applications implement concurrently, so an omitted dependency shows up as a race rather than a delay.
+- `Depends on` is honest and complete, and every edge reaching another application is tagged. `contract:` means the task needs only an interface already fixed under **Interface contract**, so both sides build concurrently. `runtime:` means it needs that application's code built, running, or seeding data, so this task waits. Implementation schedules tasks from these tags: an omitted edge becomes a race, an over-tagged `runtime:` idles work that could have run, and a `runtime:` edge mistagged `contract:` becomes a broken build.
 - `Change` names behavior, contracts, and where this connects to what already exists — never file layout, naming, or mechanics. Those are the Developer's to decide against `<app-name>.recon.md`.
-- `Verify` must be a runnable command drawn from the app's configured `commands`. "Manually check" is not a verification.
+- `Verify` must be a runnable command drawn from the app's configured `commands`, and the **cheapest one that would catch this task failing** — a typecheck for a type-only change, a single test file where the runner takes one. The exit gate runs the full set once at the end, so a task reaching for it needlessly pays for it on every task. "Manually check" is not a verification.
 - `Acceptance` states observable behavior, never implementation detail.
 - A task no single agent can complete in one sitting is too large — split it.
 - `Notes` is the Developer's alone. Never write it.

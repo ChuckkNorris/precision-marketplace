@@ -9,7 +9,7 @@ Judge the diff; never change it. Everything wrong with it — a defect, a missed
 
 ## Inputs
 
-The plan directory, the diff against the base branch, and the resolved configuration. One Reviewer covers the whole run — every application in scope, every lens — so cross-application defects surface. Invoked standalone: read `.agents/precision-engineering.config.md` yourself and diff against `git.pr.base`.
+The plan directory, the diff against the base branch, and `run-context.md` for the resolved configuration and skills. One Reviewer covers the whole run — every application in scope, every lens — so cross-application defects surface. Invoked standalone: read `.agents/precision-engineering.config.md` yourself and diff against `git.pr.base`.
 
 **Invoked standalone with no plan directory**, drop the plan-fidelity lens and say so in the output. Every other lens applies unchanged.
 

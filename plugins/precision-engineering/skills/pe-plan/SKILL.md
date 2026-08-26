@@ -9,19 +9,20 @@ Produce a plan another agent can implement without re-deriving the design. State
 
 ## Inputs
 
-The brief, the resolved configuration, the applications in scope, and each `<app-name>.recon.md` written by its Explorer. Invoked standalone: read `.agents/precision-engineering.config.md` yourself, and run `pe-explore` first where a recon file is missing — planning without reconnaissance produces plans that do not fit the codebase.
+The brief, `run-context.md` for the resolved configuration and skills, the applications in scope, and each `<app-name>.recon.md` written by its Explorer. Invoked standalone: read `.agents/precision-engineering.config.md` yourself, and run `pe-explore` first where a recon file is missing — planning without reconnaissance produces plans that do not fit the codebase.
 
 ## Method
 
 1. Load every skill resolved for the `plan` step and for each in-scope application, plus each application's `conventions`. These are the repository's mandatory standards — the plan must conform to them, not merely mention them.
 2. Read each `<app-name>.recon.md` and the precedents it cites. Deviating from a cited precedent requires a stated reason in **Design**. **Never edit that file** — it is the Explorer's write-once record, and the reason your deviation is checkable at all.
 3. Decide scope. **Write out-of-scope before writing tasks** — adjacent problems noticed while planning are recorded there, never folded into the work.
-4. Complete `overview.md` per [plan-contract.md](../../shared/plan-contract.md) — the orchestrator seeded it with the requirement and scope; you add design, risks, and rollback, and set status `awaiting-approval` — and write each `<app-name>.plan.md` per [plan-artifacts.md](./references/plan-artifacts.md). Integration points crossing an application boundary go in `overview.md` under **Design**.
+4. Complete `overview.md` per [plan-contract.md](../../shared/plan-contract.md) — the orchestrator seeded it with the requirement and scope; you add design, risks, and rollback, and set status `awaiting-approval` — and write each `<app-name>.plan.md` per [plan-artifacts.md](./references/plan-artifacts.md). Integration points crossing an application boundary go in `overview.md` under **Interface contract**, fixed verbatim and numbered — every wire shape, route, accessible name, and copy string the applications must agree on. This section is what lets implementation run concurrently, so an interface left to "agree on later" is a scheduling cost, not a detail.
    **Put nothing in the plan an approver cannot act on and a Developer cannot implement from.** Scope, behavior, contracts, call stacks, and connection points belong here; the mechanics of satisfying them do not.
 5. Structure the design sections from the plan template for the application's `type`, per the mapping in [plan-artifacts.md](./references/plan-artifacts.md). Write the sections that apply, name every dropped one in a single `**Not applicable:**` line with its reason, and expand the `<Additional…Section>` placeholders — they are where the plan stops being generic.
 6. Trace the call stack for each core path end to end, naming real functions and modules, under the `#### Callstack` heading of the endpoint or flow it belongs to. This is where code-level design errors surface — a plan whose call stack does not connect is wrong regardless of how reasonable the prose reads.
 7. Name test scenarios explicitly: happy path, boundary, failure, authorization. "Add unit tests" is not a scenario.
-8. Derive each task's `Verify` from the application's configured `commands`. A task you cannot write a verification for is not yet specified well enough.
+8. Derive each task's `Verify` from the application's configured `commands`, choosing the cheapest command that would catch that task failing. A task you cannot write a verification for is not yet specified well enough.
+9. Tag every cross-application `Depends on` edge `contract:` or `runtime:` per [plan-artifacts.md](./references/plan-artifacts.md). Ask what the task needs *at the moment it is written*: an interface you already fixed is `contract:`, and only code that must be built, running, or seeding data is `runtime:`. Most edges are `contract:` once the interface contract is complete — that is the point of writing one.
 
 ## Escalating open questions
 
@@ -37,7 +38,7 @@ Apply the escalate-versus-decide test in the contract first. Anything answerable
 - Every applicable template section is written, and every dropped one is named in the `**Not applicable:**` line with its reason.
 - Every endpoint names its authorization; every component names its props and its place in the hierarchy.
 - Every task meets the task-format rules in [plan-artifacts.md](./references/plan-artifacts.md): matched to a checklist entry, carrying observable acceptance, a runnable `Verify`, and small enough for one agent in one sitting.
-- Every task's `Depends on` is complete, including where it reaches another application. Implementation runs applications concurrently when no dependency crosses between them, so a dependency you omit becomes a race rather than a delay.
+- Every cross-application interface is fixed verbatim under **Interface contract**, and every task's `Depends on` is complete with each cross-application edge tagged `contract:` or `runtime:`. Implementation schedules tasks rather than applications from those tags, so an omitted edge becomes a race and a mistagged one becomes a broken build.
 - Per-application plan files come from `applications[]`. Never emit a fixed frontend/backend pair; a single `fullstack` application gets a single plan file.
 
 ## Revising an existing plan

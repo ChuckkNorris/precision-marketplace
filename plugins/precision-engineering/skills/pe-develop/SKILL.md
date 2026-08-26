@@ -32,9 +32,10 @@ Every change runs every stage. There is no abbreviated path — a change too sma
 2. **Locate the run.** Look for a plan directory under `docs/plans/` whose `overview.md` records the current branch — given a pull request reference, check out its branch first.
 3. **No plan directory — a new run.** Normalize the argument into a brief per [ticket-ingestion.md](../../shared/ticket-ingestion.md); derive `<feature-slug>`, create `docs/plans/<feature-slug>/`, and write `brief.md`; determine applications in scope, asking per [escalation.md](../../shared/escalation.md) when ambiguous, since a wrong scope wastes the entire pipeline; then seed `overview.md` — requirement, in and out of scope, apps in scope, status `planning`. The Planner fills in design, risks, and rollback.
 4. **A plan directory — a resume.** Take applications in scope from `overview.md`'s **Apps in scope**. Never re-derive it: the plan was built against that scope, and a fresh judgment that disagrees with it invalidates the plan.
-5. Resolve skills per the schema's resolution rules. Pass resolved config, scope, and skill list into every subagent; **subagents do not re-read config.**
+5. Resolve skills per the schema's resolution rules, then write `run-context.md` per [plan-contract.md](../../shared/plan-contract.md) — resolved config, scope, and each application's skill list, in one file. Pass every subagent that file's path and its own application name; **subagents read `run-context.md`, never the config file.** One file written once carries the same no-drift guarantee as restating it in every prompt, at a fraction of the handoff cost.
+6. **Start the installs.** Run each in-scope application's `commands.install` in the background now. They are among the slowest commands in the run and nothing before stage 5 needs them, so an install still running when a Developer starts is pure delay. Report a failure; never hold stage 2 waiting on one.
 
-**Steps 1, 2, and 5 run on every invocation.** A resumed run needs config, scope, and skills exactly as a new one does — subagents never re-read them, so a resume that skips this stage reaches Implement with no commands and no standards.
+**Steps 1, 2, 5, and 6 run on every invocation.** A resumed run needs config, scope, skills, and warm installs exactly as a new one does — subagents never re-read config, so a resume that skips this stage reaches Implement with no commands and no standards.
 
 **Seed `overview.md` before any subagent runs.** It is the resume record, and a run that dies before it exists cannot be continued.
 
@@ -76,15 +77,26 @@ Then apply `workflow.gates.plan` per **Gate resolution**. The artifact is the pl
 
 ### 5 - Implement
 
-Run applications **concurrently** when no task's `Depends on` reaches another application — the plan states them, so this is a check, not a judgment. Otherwise run them sequentially in dependency order.
+**Schedule tasks, not applications.** Serializing a whole application because one of its later tasks waits on another idles every independent task behind it — usually most of the stage. Build the schedule from the plans' `Depends on` tags:
 
-Each concurrent Developer commits its own application's tasks. A cross-application dependency surfacing mid-stage stops both and restarts the stage sequentially.
+| Edge | Means | Effect |
+|---|---|---|
+| `contract:` | Needs only an interface already fixed under **Interface contract** | Not a barrier. Both sides run concurrently. |
+| `runtime:` | Needs the other application's code built, running, or seeding data | A barrier. The dependent task waits. |
+
+Cut the schedule into waves: a task joins the current wave when every unmet dependency it carries is `contract:`. Run one Developer per application per wave, all concurrently, each given only that wave's task IDs. An application with tasks in later waves gets its Developer **continued**, not respawned — its context is the point.
+
+Concurrent Developers share one branch and one git index. Give each its own worktree where the harness offers isolation; otherwise require each to stage only its own application's paths.
+
+A `runtime:` edge the plan tagged `contract:` breaks the build. Stop the affected Developers, re-run that wave sequentially, and report it — it is a plan defect, not a scheduling one.
 
 Set status `in-progress` when the stage starts, and record each Developer's returned exit-gate rows in the `overview.md` verification table as it finishes — concurrent Developers return their results rather than writing that file. Apply `workflow.gates.implementation` per **Gate resolution** before stage 6.
 
 ### 6 - Review
 
-**Confirm the gate evidence first** — yours, because you own git. Every row of the `overview.md` verification table must be green at a commit equal to `HEAD`; that is the gate, and the Reviewer reads it rather than re-runs it. Anything else goes back to the Developer before review starts.
+**Confirm the gate evidence first** — yours, because you own git. Every row of the `overview.md` verification table must be green and still valid at `HEAD`; that is the gate, and the Reviewer reads it rather than re-runs it.
+
+A row behind `HEAD` is still valid where nothing since touched what it covers. Re-run a row only when `git diff --name-only <row-commit>..HEAD -- <app-path>` is non-empty — and always re-run the row for any application whose tests exercise another end to end, since those cover paths outside their own. Record the confirming commit on every row you re-run. Anything red goes back to the Developer before review starts.
 
 Then run **one Reviewer across every application in scope**, telling it the commit under review. It changes nothing: every finding — a defect, a missed requirement, a standards or documentation gap — comes back to you as a report to route. **You own `overview.md` status**: `complete` when every application approves, `in-review` otherwise.
 
