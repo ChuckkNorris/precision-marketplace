@@ -1,6 +1,6 @@
 ---
 name: pe-implement
-description: Execute an approved development plan task by task - honoring the configured test strategy, tracking task status, committing per task, and exiting only on a green build, tests, lint, and typecheck. Use to implement a plan produced by pe-plan.
+description: Execute an approved development plan task by task - deciding low-level mechanics yourself, honoring the configured test strategy, tracking task status, committing per task, and exiting only on a green build, tests, lint, and typecheck. Use to implement a plan produced by pe-plan.
 ---
 
 # Implement
@@ -13,12 +13,11 @@ The plan directory, the resolved configuration, and the applications in scope. I
 
 ## Method
 
-**Your working documents.** The checklist in `<app-name>.plan.md`; task detail and file manifest in `<app-name>.instructions.md`.
+**Your working documents.** `<app-name>.plan.md` for the design, checklist, and task details; `<app-name>.recon.md` for what the code looks like today. Neither is yours to restructure.
 
 1. Load every skill resolved for the `implement` step and for each in-scope application, plus the application's `conventions`.
-2. Read `overview.md` and your task detail, including its `## Current state` where present. Read `<app-name>.plan.md` only where a task's `Reference` sends you to a design section for a contract. **Stop and report if any open question is unresolved or `overview.md` lists a blocker.**
-3. Work tasks in dependency order. For each task:
-   - Read everything the task's `Reference` names, where present, before writing code.
+2. Read `overview.md`, your application's plan, and its recon file. **Stop and report if any open question is unresolved or `overview.md` lists a blocker.**
+3. Work tasks in dependency order. **The plan states behavior, contracts, and connection points; which files, names, and structures deliver them is yours to decide** — follow the precedents the recon file cites. For each task:
    - Mark it `[~]` in the checklist **before** starting.
    - Implement per `workflow.testStrategy`:
      - `tdd` — write the test, run it, confirm it fails *for the intended reason*, then implement to green.
@@ -39,10 +38,10 @@ Green `build`, `test`, `lint`, and `typecheck` for every in-scope application us
 
 ## Guardrails
 
-- Touching a path absent from the file manifest requires stopping and reporting.
+- Anything in `overview.md` **Out of scope** is forbidden, not deprioritized. Problems noticed outside your tasks are reported, never fixed opportunistically.
 - Never weaken a test, skip a test, or loosen a threshold to reach green.
 - Never mark a task `[x]` without its `Verify` passing. The marker is evidence, not intent.
-- Match surrounding code — its naming, idiom, and comment density. New code should be indistinguishable in style from the precedents the plan's `## Current state` cited.
+- Match surrounding code — its naming, idiom, and comment density. New code should be indistinguishable in style from the precedents the recon file cited.
 - Every comment explains *why* — the rationale, the constraint, the rejected alternative. The code already states what it does, so a comment restating that is noise that goes stale. Keep each under 200 characters; a reason needing more than that belongs in the name, the structure, or the task's **Notes**.
 - Never commit secrets, credentials, or artifacts the repository ignores.
 - Blocked mid-task? Leave the marker `[~]` and report the reason as a blocker. The orchestrator records it in `overview.md` and sets status.
@@ -57,7 +56,7 @@ The plan should have settled the design, so escalating here means the plan fell 
 
 Leave the task `[~]`, record the blocker, and return the question with options. **Do not improvise a design** — the value of the plan gate is lost if implementation quietly redesigns around a gap.
 
-Obvious mechanical corrections — a wrong path, an off-by-one in a manifest — are just fixed, and noted under the task's **Notes**.
+Obvious mechanical corrections — a wrong path, a stale name — are just fixed, and noted under the task's **Notes**.
 
 ## Resolving review findings
 

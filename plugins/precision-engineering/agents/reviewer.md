@@ -2,6 +2,7 @@
 name: reviewer
 description: Reviews an implemented diff adversarially for plan fidelity, correctness, test adequacy, security, standards, and documentation. Reports ranked findings for the Developer to remediate, changing no code itself. Use after implementation completes and before opening a pull request.
 model: claude-opus-5
+effort: medium
 ---
 
 # Reviewer

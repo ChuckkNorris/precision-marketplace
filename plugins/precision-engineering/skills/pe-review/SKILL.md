@@ -31,7 +31,7 @@ Examine the diff through every lens. Assume it is broken until the diff shows ot
 
 The lenses interact — a test gap that is really a defect, a standards violation that opens a hole, fidelity drift that explains a bug. Report each root cause once, under the lens that best explains it, rather than the same fault once per lens that can see it.
 
-**Plan fidelity** — Is every task marked `[x]` actually implemented, and is everything implemented actually marked? A marker without matching code, or code without a matching task, is a finding. Does anything in the diff fall outside the file manifest? Was anything from **Out of scope** built anyway? Does the implementation match the planned call stacks, or did it drift into a different design?
+**Plan fidelity** — Is every task marked `[x]` actually implemented, and is everything implemented actually marked? A marker without matching code, or code without a matching task, is a finding. Was anything from **Out of scope** built anyway? Does the implementation match the planned call stacks, or did it drift into a different design?
 
 **Correctness** — Trace the changed paths by hand. Boundaries, null and empty cases, error paths, concurrency, transaction scope, partial failure. For each defect, construct the concrete input that triggers it.
 

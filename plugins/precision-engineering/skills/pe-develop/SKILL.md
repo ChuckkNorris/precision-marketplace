@@ -19,8 +19,8 @@ Every change runs every stage. There is no abbreviated path — a change too sma
 |---|---|---|---|---|
 | 0 | Resolve context | orchestrator | — | `brief.md`, `overview.md` |
 | 1 | Branch | orchestrator | — | feature branch |
-| 2 | Explore | Explorer | `pe-explore` | `<app>.instructions.md` — `## Current state` |
-| 3 | Plan | Planner | `pe-plan` | `<app>.plan.md`, rest of each `<app>.instructions.md` |
+| 2 | Explore | Explorer | `pe-explore` | `<app>.recon.md` |
+| 3 | Plan | Planner | `pe-plan` | `<app>.plan.md` |
 | 4 | Plan gate | orchestrator | — | gate |
 | 5 | Implement | Developer | `pe-implement` | commits, green gate |
 | 6 | Review | Reviewer | `pe-review` | `<app>.findings.md` |
@@ -44,7 +44,7 @@ Continue from the located run's status:
 
 | Status | Continue at |
 |---|---|
-| `planning` | Stage 2 — or stage 3, where every in-scope application's `## Current state` is already populated |
+| `planning` | Stage 2 — or stage 3, where every in-scope application already has a `<app>.recon.md` |
 | `awaiting-approval`, plan gate approved in `## Gates` | Stage 5 |
 | `awaiting-approval`, feedback present | Planner revision per **Continuation** |
 | `in-progress` | Stage 5, from the first task marked `[~]` or `[ ]` |
@@ -60,25 +60,25 @@ On a dirty working tree: stop and ask, or unattended, stop and report.
 
 ### 2 - Explore
 
-Run one Explorer per in-scope application, concurrently when more than one is in scope. Each writes `## Current state` into its own application's `<app>.instructions.md`, so concurrent Explorers never contend for a path.
+Run one Explorer per in-scope application, concurrently when more than one is in scope. Each writes its own application's `<app>.recon.md`, so concurrent Explorers never contend for a path.
 
 ### 3 - Plan
 
 One Planner covering all in-scope applications, so cross-application design stays coherent.
 
-Each application gets two files: `<app>.plan.md` for the human at stage 4, and `<app>.instructions.md` for the Developer at stage 5. Present the former at the gate; the latter is not review material.
+Each application gets one plan file, `<app>.plan.md` — design, integration points, and tasks. It is the whole gate artifact: reconnaissance stays in `<app>.recon.md`, and the Developer decides low-level mechanics itself at stage 5.
 
 ### 4 - Plan gate
 
 **Resolve escalations first.** If the Planner returned questions, ask them per [escalation.md](../../shared/escalation.md), record the answers in `overview.md`, and route back to the Planner to revise the plan before presenting it. A plan with unresolved questions is not ready for approval, whatever the gate setting.
 
-Then apply `workflow.gates.plan` per **Gate resolution**. The artifact is the plan summary, task count, and file manifest; published to a pull request, it is the plan commit itself, titled per `git.pr.planTitlePattern` and opened as a draft.
+Then apply `workflow.gates.plan` per **Gate resolution**. The artifact is the plan summary and its task count; published to a pull request, it is the plan commit itself, titled per `git.pr.planTitlePattern` and opened as a draft.
 
 ### 5 - Implement
 
-Run applications **concurrently** when their file manifests share no path and no task's `Depends on` reaches another application — the plan states both, so this is a check, not a judgment. Otherwise run them sequentially in dependency order.
+Run applications **concurrently** when no task's `Depends on` reaches another application — the plan states them, so this is a check, not a judgment. Otherwise run them sequentially in dependency order.
 
-Each concurrent Developer commits its own application's tasks. An overlap surfacing mid-stage stops both and restarts the stage sequentially.
+Each concurrent Developer commits its own application's tasks. A cross-application dependency surfacing mid-stage stops both and restarts the stage sequentially.
 
 Set status `in-progress` when the stage starts, and record each Developer's returned exit-gate rows in the `overview.md` verification table as it finishes — concurrent Developers return their results rather than writing that file. Apply `workflow.gates.implementation` per **Gate resolution** before stage 6.
 
@@ -149,7 +149,7 @@ Route every follow-up to the subagent that owns the artifact, continuing the exi
 | Current-state questions about the codebase | Explorer |
 | Branch, commits, PR | orchestrator |
 
-When the owning agent's context is gone, re-hydrate a fresh instance from the plan directory — `overview.md` run state, the app plans' task checklists, and the instructions files' `## Current state` are authoritative over any agent's recollection.
+When the owning agent's context is gone, re-hydrate a fresh instance from the plan directory — `overview.md` run state, the recon files, and the app plans' task checklists are authoritative over any agent's recollection.
 
 ## Guardrails
 

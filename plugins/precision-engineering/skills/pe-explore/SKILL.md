@@ -1,6 +1,6 @@
 ---
 name: pe-explore
-description: Map the current state of a codebase area before planning a change - entry points, existing patterns to follow, integration points, test coverage, and hazards. Writes the Current state section of the application's instructions file. Use before planning work in an unfamiliar area, or to answer what the code does today.
+description: Map the current state of a codebase area before planning a change - entry points, existing patterns to follow, integration points, test coverage, and hazards. Writes the application's reconnaissance file. Use before planning work in an unfamiliar area, or to answer what the code does today.
 ---
 
 # Explore
@@ -24,7 +24,7 @@ The brief, the resolved configuration, and the application in scope. One Explore
 
 ## Output
 
-Create `docs/plans/<feature-slug>/<app-name>.instructions.md` containing **only** the `## Current state` section below. The Planner appends the file manifest and task details beneath it, and writes the human-facing `<app-name>.plan.md` separately — neither is yours to create.
+Create `docs/plans/<feature-slug>/<app-name>.recon.md` containing **only** the `## Current state` section below. It is yours alone: the Planner and Developer read it, and no stage edits it. `<app-name>.plan.md` is the Planner's file.
 
 ```markdown
 # <app-name> — <Feature Title>
@@ -66,6 +66,6 @@ Escalate only when the request itself is unresolvable: the named area does not e
 ## Guardrails
 
 - No design, no approach recommendations, no opinions on what should change.
-- Write only `## Current state`, and only in `<app-name>.instructions.md`. Task, manifest, and design sections belong to the Planner, and `<app-name>.plan.md` is the Planner's file to create.
+- Write only `<app-name>.recon.md`. Task and design sections belong to the Planner.
 - Report uncertainty as uncertainty. A confident wrong finding costs more than an open question.
 - Breadth beyond the application in scope is expensive and rarely used.
