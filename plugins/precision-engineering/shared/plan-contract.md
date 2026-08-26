@@ -11,7 +11,7 @@ This contract carries what more than one agent reads: which files exist, who wri
 | File | Written by | Purpose |
 |---|---|---|
 | `brief.md` | Orchestrator | Normalized requirement, whatever its source. |
-| `run-context.md` | Orchestrator | Resolved configuration, applications in scope, and each application's skill list. Written once at stage 0; subagents read it instead of the config file. |
+| `run-context.md` | Orchestrator | Resolved configuration, applications in scope, and each application's skill list. Written at stage 0; port allocations appended at stage 5 and preserved on resume. Subagents read it instead of the config file. |
 | `overview.md` | Orchestrator, then Planner, then the orchestrator alone | Requirements, scope, cross-cutting design, risks, open questions, gates, run state. |
 | `<app-name>.recon.md` | Explorer | One per application in scope. Current state of the code the change touches. Written before any design exists and **never edited after**. |
 | `<app-name>.plan.md` | Planner, then Developer | One per application in scope. The design a human approves at the gate, and the task checklist. |
@@ -22,6 +22,22 @@ This contract carries what more than one agent reads: which files exist, who wri
 **One writer per path.** Each Explorer owns one application's recon file, and each Developer its own application's plan file — which is what lets those stages run concurrently. Nothing writes a file another stage owns, which is what keeps `## Current state` falsifiable: it was recorded before any design existed to bend it toward. A recon fact that turns out wrong is corrected where it is used — the plan's **Design** or the task's **Notes** — never by editing the recon file. `overview.md` spans applications, so after the plan gate only the orchestrator writes it: subagents return status, verification rows, and blockers for it to record.
 
 **Progress lives in the plan.** Task status sits in the checklist that defines the task, run state in `overview.md`. There is no progress file, so nothing drifts out of sync.
+
+## Port allocations
+
+Under `workflow.developmentStrategy: parallel` with `runtime.isolation: assigned`, the orchestrator appends this section to `run-context.md` at stage 5 — before spawning each wave, never while Developers are reading it. It is the run's record of who holds which ports.
+
+```markdown
+## Port allocations
+| Slot | Holder | Project | API_PORT | PG_PORT |
+|---|---|---|---|---|
+| 1 | developer:companysample-api | pe-aut-11-1 | 5293 | 5532 |
+| 2 | reviewer | pe-aut-11-2 | 5393 | 5632 |
+```
+
+One column per entry in `runtime.ports`, plus the project name isolating that slot's containers and volumes. A slot is held for the life of the run and **never recycled**.
+
+**A resume never reallocates.** Stage 0 rewrites the rest of `run-context.md` on every invocation; this section is carried forward unchanged instead, or the resumed run strands the containers the first one left holding those ports.
 
 ## Task status markers
 

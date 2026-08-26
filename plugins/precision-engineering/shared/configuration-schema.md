@@ -16,7 +16,7 @@ Unknown keys are preserved, never discarded — the config is extensible by desi
 ## Schema
 
 ```yaml
-version: 2                          # required; schema version — see Versioning
+version: 3                          # required; schema version — see Versioning
 
 repository:
   strategy: monorepo                # monorepo | polyrepo
@@ -24,6 +24,7 @@ repository:
 
 workflow:
   testStrategy: test-after          # tdd | test-after | none
+  developmentStrategy: sequential   # sequential | parallel
   gates:                            # approve = a human decides; auto = proceed
     plan: approve
     implementation: auto
@@ -66,11 +67,24 @@ git:
     reviewers: []
     labels: []
 
+runtime:                            # optional; how concurrent work is kept from colliding
+  isolation: assigned               # assigned | built-in
+  portBlockSize: 100
+  ports:                            # host-published ports only
+    - { name: api,      default: 5193, env: API_PORT }
+    - { name: postgres, default: 5432, env: PG_PORT }
+  env:                              # {port:<name>} substituted with the assigned value
+    ConnectionStrings__Db: "Host=localhost;Port={port:postgres};Database=app"
+  up:   docker compose up -d --wait postgres
+  down: docker compose down -v
+  preflight: [docker info, dotnet --version]
+
 applications:                       # required; one entry per deployable/buildable unit
   - name: api                       # required; unique
     path: apps/api                  # required; repo-relative, "." for polyrepo root
     type: backend                   # frontend | backend | fullstack | mobile | service | library | infrastructure
     stack: [typescript, express]
+    dependsOn: []                   # other applications whose runtime this one needs
     skills: [clean-modular-code]    # always loaded when this app is in scope
     commands:
       install: pnpm -C apps/api install
@@ -95,6 +109,12 @@ applications:                       # required; one entry per deployable/buildab
 - `tdd` — Developer writes a failing test, confirms it fails, then implements to green, per task.
 - `test-after` — Developer implements, then writes tests before marking the task complete.
 - `none` — No test authoring required. Existing tests must still pass.
+
+### `workflow.developmentStrategy`
+- `sequential` — One Developer runs at a time. Nothing is allocated, and collisions with anything else on the host are the developer's to manage. This is the default, and how every run behaved before `runtime` existed.
+- `parallel` — Concurrent Developers each get their own worktree and, where `runtime.isolation` is `assigned`, their own block of ports.
+
+`parallel` with no `runtime` block still isolates by worktree, which suffices only for a repository whose tests bind no ports.
 
 ### `workflow.gates`
 Gates are the only sanctioned pause points; agents never invent their own.
@@ -131,8 +151,25 @@ reviews before merge. See [escalation.md](./escalation.md).
 ### `workflow.steps.<step>.skills`
 Applies the named skills to that step regardless of which app is in scope. Use for cross-cutting standards (e.g. `security-review` on `review`).
 
+### `runtime`
+Read only when `developmentStrategy` is `parallel`. Omit it when the repository needs no isolation.
+
+| Key | Meaning |
+|---|---|
+| `isolation` | `assigned` — the workflow allocates ports and injects them. `built-in` — the stack isolates itself (Aspire, testcontainers, dev containers); nothing is allocated and only the worktree separates runs. |
+| `portBlockSize` | Slot N gets `default + N × portBlockSize` for every port. Size it so no computed port can land on another port's default. |
+| `ports` | Only ports crossing the host boundary. Container-to-container addresses never vary and are not listed. |
+| `env` | Values every stack needs beyond the ports themselves, injected alongside them. `{port:<name>}` is substituted with that port's assigned value — for a setting like a connection string that cannot be overridden one field at a time. |
+| `up` / `down` | Bring the stack up and tear it down. Omit both and no lifecycle runs; commands are simply given the injected environment. |
+| `preflight` | Tool-availability checks. Run under **both** strategies, before any stage does work. |
+
+Injection is by environment variable, never by rewriting a command string — that is what keeps this repository-agnostic.
+
 ### `applications[].type`
 Selects the plan template the Planner structures that app's design sections from. `fullstack` emits both templates' sections in a single plan file — this is how MVC and monolith repos are modeled. Declare one application, not two.
+
+### `applications[].dependsOn`
+Other applications whose runtime this one needs in order to build, test, or run. The workflow starts the closure of the in-scope applications over this field, so an end-to-end suite naming the app and API it drives gets all three started for it. Purely a runtime relationship — task scheduling is governed by the plan's own `Depends on` tags.
 
 ### `applications[].commands`
 Only `build` and `test` are needed for a minimal setup. Every declared command must have been validated by `/pe-setup`. Omit a command rather than declaring one that does not work.
@@ -155,6 +192,7 @@ Every bump adds a row below, naming each key involved. That list is the only inp
 | Version | Added / changed |
 |---|---|
 | 1 | Initial schema. |
+| 3 | Added `workflow.developmentStrategy`, the `runtime` block, and `applications[].dependsOn`. Additive: a version 2 config runs unchanged on `sequential`, which is the pre-existing behavior. |
 | 2 | Added `workflow.gates.channel`, `workflow.continuation` (`trigger`, `approveToken`, `reviseToken`, `claimLabel`, `claimTimeoutMinutes`, `maxTriggers`), and `git.pr.planTitlePattern`. Added `pr-comment` to `workflow.escalation.unattended`. All additive with defaults; a version 1 config runs unchanged on defaults. |
 
 ## Extending the schema

@@ -25,10 +25,21 @@ The plan directory, `run-context.md` for the resolved configuration and skills, 
      - `none` — implement; existing tests must still pass.
    - Run the task's `Verify` command — the plan chose the cheapest command that catches this task failing, so run that one rather than reaching for the full gate. **Only once it passes**, mark the task `[x]`.
    - Record any decision the plan did not anticipate under that task's **Notes**.
-4. Stage only your own application's paths — a Developer on another application may be committing to this branch concurrently, so `git add -A` sweeps in its half-finished work. Commit per `git.commitGranularity` — `per-task` commits after each verified task using `git.commitConvention`; `squashed` defers to the end. Append the short SHA to the task's checklist entry.
+4. Stage only your own application's paths — `git add -A` sweeps in whatever else the tree holds: another Developer's half-finished work where you share a checkout, and generated files such as your slot's environment file where you do not. Commit per `git.commitGranularity` — `per-task` commits after each verified task using `git.commitConvention`; `squashed` defers to the end. Append the short SHA to the task's checklist entry.
 5. After the final task, run the exit gate and **return** its results. The orchestrator records status and verification — Developers on other applications may be writing concurrently, so `overview.md` has one writer. Invoked standalone, record it yourself.
 
 **Update markers as status changes, never batched at the end.** The checklist is the resumption record: a task left `[~]` is how the next agent knows where work was interrupted.
+
+## Runtime stack
+
+Where `runtime.up` is declared, every command needing a live application — a task's `Verify`, the test command, the exit gate — runs against a stack you bring up yourself:
+
+1. Bring it up with `runtime.up`, using the environment you were given. Under `parallel` that environment is your slot's; never fall back to the defaults, which another Developer or the user may hold.
+2. Run `commands.migrate` for each in-scope application that declares one. An isolated database starts empty, and an application that starts cleanly against an empty schema will still fail every request until this runs.
+3. Run the commands.
+4. Tear it down with `runtime.down`.
+
+**Tear down on every exit path** — the last task, a task left `[~]`, an escalation, a gate you cannot get green. Bring the stack back up if you are continued into a later wave. A stack left running holds its ports against the next run; the orchestrator's sweep is a backstop for an agent that died, not a substitute for this.
 
 ## Exit gate
 
@@ -44,6 +55,7 @@ Green `build`, `test`, `lint`, and `typecheck` for every in-scope application us
 - Match surrounding code — its naming, idiom, and comment density. New code should be indistinguishable in style from the precedents the recon file cited.
 - Every comment explains *why* — the rationale, the constraint, the rejected alternative. The code already states what it does, so a comment restating that is noise that goes stale. Keep each under 200 characters; a reason needing more than that belongs in the name, the structure, or the task's **Notes**.
 - Never commit secrets, credentials, or artifacts the repository ignores.
+- No stack is left running when you return control.
 - Blocked mid-task? Leave the marker `[~]` and report the reason as a blocker. The orchestrator records it in `overview.md` and sets status.
 
 ## Escalation
