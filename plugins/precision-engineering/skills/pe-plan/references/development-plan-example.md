@@ -1,8 +1,8 @@
 # Development Plan Example
 
-One application's artifacts from `docs/plans/proj-1234-order-rate-limiting/`, shown **mid-run**: T-001 verified, T-002 in progress and blocked on an open question, T-003 not started. Abridged — [plan-artifacts.md](./plan-artifacts.md) and the plan templates are authoritative on shape; this shows the three files agreeing with each other at one moment.
+One application's artifacts from `docs/plans/proj-1234-order-rate-limiting/`, shown **mid-run**: T-001 verified, T-002 in progress and blocked on an open question, T-003 not started. Abridged — [plan-artifacts.md](./plan-artifacts.md) and the plan templates are authoritative on shape; this shows the files agreeing with each other at one moment.
 
-A second application in scope would add its own `web.plan.md` and `web.instructions.md` in the same shape, structured from the frontend template.
+A second application in scope would add its own `web.plan.md` in the same shape, structured from the frontend template.
 
 ---
 
@@ -30,7 +30,7 @@ when a caller is throttled.
 
 ## Design
 Limiter state lives in Redis, already an `api` dependency for sessions
-(`api.instructions.md` Current state: `src/shared/redis.ts:12`). An in-process bucket
+(`api.recon.md`: `src/shared/redis.ts:12`). An in-process bucket
 would not hold across the three API replicas. `web` treats any non-2xx as a generic
 failure today — a cross-application integration point, so it is recorded here rather
 than in either app plan.
@@ -59,7 +59,9 @@ Q2 unresolved. T-002 cannot proceed — bucket key derivation depends on the ans
 
 ---
 
-## `api.plan.md` — the human tier
+## `api.plan.md`
+
+The Explorer's `api.recon.md` sits beside it, holding the current state these citations draw on.
 
 ```markdown
 # api — Order Rate Limiting
@@ -131,39 +133,18 @@ registration and nothing else.
 | Redis unreachable | unit | Fails open, ERROR logged |
 | Unauthenticated request | integration | 401 from `authenticate`, limiter never runs |
 
-## AI Instructions
-Execution detail for this application: [api.instructions.md](./api.instructions.md)
-```
-
----
-
-## `api.instructions.md` — the agent tier
-
-`## Current state` opens this file, written by the Explorer and never edited after. Then:
-
-```markdown
-## File manifest
-| Action | Path | Purpose |
-|---|---|---|
-| create | `src/shared/tokenBucket.ts` | Redis token bucket |
-| create | `src/middleware/rateLimit.ts` | Limiter middleware |
-| modify | `src/config/schema.ts` | `rateLimit` config section |
-| modify | `src/app.ts` | Register middleware after `authenticate` |
-
 ## Task details
 
 ### T-002 — Redis-backed token bucket
 - **Depends on:** T-001
-- **Files:** create `src/shared/tokenBucket.ts`
-- **Reference:** `src/shared/redis.ts:12` for the client and its Lua eval helper;
-  `api.plan.md` **Endpoints → Create Order → Callstack** for the call shape.
-- **Change:** `consume(key, n)` against a Lua script, returning
-  `{ allowed, retryAfterSeconds }`. 120s TTL per bucket.
+- **Change:** A `consume(key, n)` operation over the existing Redis client, returning
+  `{ allowed, retryAfterSeconds }`, called from the limiter per **Endpoints → Create
+  Order → Callstack**. Buckets expire after 120s.
 - **Acceptance:** consuming the last token allows; the next call denies with a
   positive `retryAfterSeconds`; the bucket refills on schedule.
-- **Verify:** `pnpm -C apps/api test src/shared/tokenBucket.test.ts`
+- **Verify:** `pnpm -C apps/api test`
 - **Notes:** Script and TTL done and passing locally. Stopped before key derivation —
   Q2 decides whether the key is the API key or the resolved org. Left `[~]`.
 ```
 
-The three files agree at every point: the checklist SHA on T-001 matches the verification table's commit, `[~]` on T-002 matches its `Notes`, and `Blockers` names the question those Notes cite. An agent resuming with no memory of the run recovers all of it from the files — which is why status lives in the plan rather than beside it.
+The files agree at every point: the checklist SHA on T-001 matches the verification table's commit, `[~]` on T-002 matches its `Notes`, and `Blockers` names the question those Notes cite. An agent resuming with no memory of the run recovers all of it from the files — which is why status lives in the plan rather than beside it.

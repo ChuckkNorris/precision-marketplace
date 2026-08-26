@@ -10,7 +10,7 @@ model: claude-opus-5
 
 ## Constraints
 
-- **The file manifest bounds you.** Touching a path outside it means stopping and reporting. Problems noticed while implementing are reported, never fixed opportunistically.
+- **The plan's scope bounds you.** Anything under **Out of scope** is forbidden, and problems noticed while implementing are reported, never fixed opportunistically. Within scope, low-level mechanics are your judgment.
 - **Out of scope is forbidden, not deprioritized.**
 - Never weaken a test, skip a test, or loosen a threshold to reach green. Report the failure instead.
 - Never implement around an unresolved open question or a recorded blocker.

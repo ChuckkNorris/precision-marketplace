@@ -12,13 +12,13 @@ This contract carries what more than one agent reads: which files exist, who wri
 |---|---|---|
 | `brief.md` | Orchestrator | Normalized requirement, whatever its source. |
 | `overview.md` | Orchestrator, then Planner, then the orchestrator alone | Requirements, scope, cross-cutting design, risks, open questions, gates, run state. |
-| `<app-name>.plan.md` | Planner, then Developer | One per application in scope. Task checklist and the design a human approves at the gate. |
-| `<app-name>.instructions.md` | Explorer, then Planner, then Developer | One per application in scope. Agent-facing execution detail: current state, file manifest, per-task instructions. |
+| `<app-name>.recon.md` | Explorer | One per application in scope. Current state of the code the change touches. Written before any design exists and **never edited after**. |
+| `<app-name>.plan.md` | Planner, then Developer | One per application in scope. The design a human approves at the gate, and the task checklist. |
 | `<app-name>.findings.md` | Reviewer | One per application in scope. Verdict and ranked findings from the adversarial pass. |
 
-**Two tiers per application.** `<app-name>.plan.md` is for the human approving at the gate — what is being built and how it behaves. `<app-name>.instructions.md` is for the agent implementing it with no prior context — where the code lives, which files to touch, what to do per task. Neither carries the other's content.
+**The plan is the approval artifact.** `<app-name>.plan.md` states what is being built, how it behaves, and where it connects — enough for a human to approve and an agent to implement. Low-level mechanics are the Developer's judgment, not the plan's content. Reconnaissance stays in `<app-name>.recon.md`: it is input to the design, not evidence the design is right, so an approver never has to read past it.
 
-**One writer per path.** Each Explorer owns one application's instructions file, and each Developer its own application's plan and instructions files — which is what lets those stages run concurrently. `overview.md` spans applications, so after the plan gate only the orchestrator writes it: subagents return status, verification rows, and blockers for it to record.
+**One writer per path.** Each Explorer owns one application's recon file, and each Developer its own application's plan file — which is what lets those stages run concurrently. Nothing writes a file another stage owns, which is what keeps `## Current state` falsifiable: it was recorded before any design existed to bend it toward. A recon fact that turns out wrong is corrected where it is used — the plan's **Design** or the task's **Notes** — never by editing the recon file. `overview.md` spans applications, so after the plan gate only the orchestrator writes it: subagents return status, verification rows, and blockers for it to record.
 
 **Progress lives in the plan.** Task status sits in the checklist that defines the task, run state in `overview.md`. There is no progress file, so nothing drifts out of sync.
 
@@ -32,7 +32,7 @@ This contract carries what more than one agent reads: which files exist, who wri
 
 The Developer sets `[~]` when it begins a task and `[x]` only once that task's `Verify` command passes. **Update the marker as status changes, never batched at the end** — the checklist is the resumption record, and a `[~]` left behind by a lost context is what tells the next agent where work was interrupted.
 
-**Task anatomy.** Every task carries `Depends on`, `Files`, `Reference`, `Change`, `Acceptance`, `Verify`, and `Notes`. The Planner writes all but `Notes`, which the Developer appends for what the plan did not anticipate. Task IDs are globally unique across the plan directory, not per file.
+**Task anatomy.** Every task carries `Depends on`, `Change`, `Acceptance`, `Verify`, and `Notes`. The Planner writes all but `Notes`, which the Developer appends for what the plan did not anticipate. Task IDs are globally unique across the plan directory, not per file.
 
 ## `overview.md`
 
@@ -108,4 +108,4 @@ Each row carries the short SHA its command ran against. Review confirms those SH
 
 ## Resuming
 
-An agent resuming after a context reset reads `overview.md` for run state, `<app-name>.plan.md` for task status, and `<app-name>.instructions.md` for current state and task detail, then continues without re-deriving anything. These files are authoritative over any agent's recollection — a populated `## Current state` means exploration is done and must not be repeated.
+An agent resuming after a context reset reads `overview.md` for run state, `<app-name>.recon.md` for current state, and `<app-name>.plan.md` for task status and detail, then continues without re-deriving anything. These files are authoritative over any agent's recollection — an existing `<app-name>.recon.md` means exploration is done and must not be repeated.
