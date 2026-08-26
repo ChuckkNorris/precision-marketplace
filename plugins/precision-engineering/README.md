@@ -44,7 +44,7 @@ pe-develop <ticket|pr|description>
 
 **The exit gate runs once.** The Developer records each `build`, `test`, `lint`, and `typecheck` result against the commit it ran on; the orchestrator confirms that commit is `HEAD`, and the Reviewer reads that evidence rather than re-running the repository's slowest commands. Nothing is approved on unproven green — a verification table that is absent, red, or stale sends the gate back to the Developer.
 
-**Cost is tiered by role.** The Explorer's job is search and citation, so it runs on Sonnet; the Planner, Developer, and Reviewer make judgment calls and run on Opus. Explorers fan out per application, and Developers do too when no dependency crosses applications.
+**Cost is configured, not assumed.** Every stage runs on the model of the session that invoked it, unless `workflow.steps.<step>` names otherwise — a cheap model for reconnaissance, a stronger one where judgment is dense. The plugin pins nothing: a repository that wants a tier states it, and one that does not gets a pipeline that follows whatever the invoking session runs on. Explorers fan out per application, and Developers do too when their manifests do not overlap.
 
 **One configuration, both environments.** A gate set to `approve` means a human decides; *how* they are asked is detected at runtime. Attended — an interactive Claude Code or IDE session — the plan is presented in the conversation. Unattended — a cloud agent, routine, or CI job — it is committed and published as a draft pull request instead. Nothing in the config or the skills changes between the two.
 
@@ -89,8 +89,8 @@ This directory is self-contained: agents and skills reference `shared/` and each
 
 ## Source
 
-This directory is the source of truth for the plugin. `agents/` carries the Cursor frontmatter
-(`model`) and explicit procedure links; `skills/` and `shared/` are harness-agnostic. Contribute
-here — see [CONTRIBUTING.md](../../CONTRIBUTING.md).
+This directory is the source of truth for the plugin. `agents/` carries each role and its explicit
+procedure link; `agents/`, `skills/`, and `shared/` are all harness-agnostic — no file names a model.
+Contribute here — see [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 MIT licensed.

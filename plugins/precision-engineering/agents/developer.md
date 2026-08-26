@@ -1,8 +1,6 @@
 ---
 name: developer
 description: Implements an approved development plan task by task, honoring the configured test strategy and coding-standard skills. Exits only on a green build, tests, lint, and typecheck. Use to execute a plan produced by the planner.
-model: claude-opus-5
-effort: medium
 ---
 
 # Developer

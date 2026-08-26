@@ -32,10 +32,10 @@ Every change runs every stage. There is no abbreviated path — a change too sma
 2. **Locate the run.** Look for a plan directory under `docs/plans/` whose `overview.md` records the current branch — given a pull request reference, check out its branch first.
 3. **No plan directory — a new run.** Normalize the argument into a brief per [ticket-ingestion.md](../../shared/ticket-ingestion.md); derive `<feature-slug>`, create `docs/plans/<feature-slug>/`, and write `brief.md`; determine applications in scope, asking per [escalation.md](../../shared/escalation.md) when ambiguous, since a wrong scope wastes the entire pipeline; then seed `overview.md` — requirement, in and out of scope, apps in scope, status `planning`. The Planner fills in design, risks, and rollback.
 4. **A plan directory — a resume.** Take applications in scope from `overview.md`'s **Apps in scope**. Never re-derive it: the plan was built against that scope, and a fresh judgment that disagrees with it invalidates the plan.
-5. Resolve skills per the schema's resolution rules, then write `run-context.md` per [plan-contract.md](../../shared/plan-contract.md) — resolved config, scope, and each application's skill list, in one file. Pass every subagent that file's path and its own application name; **subagents read `run-context.md`, never the config file.** One file written once carries the same no-drift guarantee as restating it in every prompt, at a fraction of the handoff cost. On a resume, carry any existing `## Port allocations` section forward unchanged — this step rewrites the rest of the file, and reallocating strands the containers still holding the old ports.
+5. Resolve skills per the schema's resolution rules, read each step's `model` from `workflow.steps`, then write `run-context.md` per [plan-contract.md](../../shared/plan-contract.md) — resolved config, scope, and each application's skill list, in one file. Pass every subagent that file's path and its own application name; **subagents read `run-context.md`, never the config file.** One file written once carries the same no-drift guarantee as restating it in every prompt, at a fraction of the handoff cost. On a resume, carry any existing `## Port allocations` section forward unchanged — this step rewrites the rest of the file, and reallocating strands the containers still holding the old ports. A model is not context you pass — it is applied when you launch the subagent, per **Subagent dispatch**.
 6. **Preflight, then start the installs.** Run every `runtime.preflight` command first and report any failure before going further — a missing tool or a stopped container daemon fails every Developer at stage 5 instead of here. Then, under `sequential`, run each in-scope application's `commands.install` in the background: they are among the slowest commands in the run and nothing before stage 5 needs them, so an install still running when a Developer starts is pure delay. Report a failure; never hold stage 2 waiting on one. Under `parallel`, skip the installs — each worktree installs its own dependencies, so a warm install in the main checkout is work thrown away.
 
-**Steps 1, 2, 5, and 6 run on every invocation.** A resumed run needs config, scope, skills, and warm installs exactly as a new one does — subagents never re-read config, so a resume that skips this stage reaches Implement with no commands and no standards.
+**Steps 1, 2, 5, and 6 run on every invocation.** A resumed run needs config, scope, skills, dispatch settings, and warm installs exactly as a new one does — subagents never re-read config, so a resume that skips this stage reaches Implement with no commands and no standards.
 
 **Seed `overview.md` before any subagent runs.** It is the resume record, and a run that dies before it exists cannot be continued.
 
@@ -136,6 +136,23 @@ A gate set to `approve` means a human decides. **Which channel carries that deci
 
 Never downgrade a gate because its channel is inconvenient: an unattended run does not proceed on `auto` reasoning, and an attended one does not publish to avoid asking.
 
+## Subagent dispatch
+
+Each stage's subagent runs on the `model` declared for that stage's step in `workflow.steps`:
+
+| Step | Stage | Subagent |
+|---|---|---|
+| `explore` | 2 | Explorer |
+| `plan` | 3 | Planner |
+| `implement` | 5 | Developer |
+| `review` | 6 | Reviewer |
+
+Set a model on the launch **only where the config declares one**. A step with no `model` defaults to `inherit` — inherit the current session. Pass `inherit` where the launch accepts it, and omit the launch's model parameter where it does not; either way the subagent stays on your own session's model. Never infer a model from a role: no step has one until a repository names it. Pass a declared value as written rather than composing one — the values a subagent launch accepts are not always those your own session offers.
+
+A value the harness rejects is a config error: report it, name the step, and stop. Never fall back to another model.
+
+This is a launch-time setting. A continued subagent keeps the model it started with, so a config edited mid-run takes effect on the next fresh spawn — see **Follow-up routing**. Concurrent Explorers and Developers each launch on their own step's model.
+
 ## Continuation
 
 Cloud, scheduled, and headless runs re-enter through stage 0's resume check, and resolve their pending gates by a signal on the pull request rather than by a turn in this conversation.
@@ -178,7 +195,8 @@ When the owning agent's context is gone, re-hydrate a fresh instance from the pl
 
 ## Guardrails
 
-- Config is read once, in stage 0, and passed down. Subagents that re-read it drift. Stage 0 runs its config, scope, and skill resolution on a resume too.
+- Config is read once, in stage 0, and passed down. Subagents that re-read it drift. Stage 0 runs its config, scope, skill, and dispatch resolution on a resume too — a step's `model` is applied when you launch its subagent, never passed as context for it to act on.
+- Every `model` a step declares launches with it applied, or the run stops with it named. A declared model in neither the launch nor the report was dropped.
 - After the plan gate, **only you write `overview.md`** — status, verification rows, blockers, and gates. Subagents return those facts; you record them. Transcribing what a subagent returns is run state, which you own, not the subagent's work.
 - The exit gate runs once, in stage 5, and is confirmed by commit SHA thereafter. A stale row is re-run by the Reviewer, never by you. A stage that re-runs it is paying the run's slowest commands for an answer the verification table already holds.
 - Gates are the only pause points. Never invent one, never skip one.
