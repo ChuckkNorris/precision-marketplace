@@ -1,7 +1,6 @@
 ---
 name: planner
 description: Writes technically-focused, implementable development plans from a brief and the Explorer's current-state reconnaissance. Produces per-application plans with file manifests, ordered tasks, and acceptance criteria. Use to plan any non-trivial change before implementation.
-model: claude-opus-5
 ---
 
 # Planner

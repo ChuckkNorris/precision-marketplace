@@ -1,7 +1,6 @@
 ---
 name: explorer
 description: Read-only codebase reconnaissance for a development task. Maps current-state architecture, integration points, and existing patterns into the Current state section of the application's instructions file. Use before planning any change to an unfamiliar area.
-model: claude-sonnet-5
 ---
 
 # Explorer

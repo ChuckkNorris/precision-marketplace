@@ -39,10 +39,11 @@ Ask only what detection cannot answer. Use structured questions with a recommend
 - **Gates** — which of plan / implementation / PR require human approval. The channel is automatic: in session when attended, on the pull request when not, so never ask which environment the config is for
 - **Continuation** — the pull request trigger tokens, when any gate requires approval
 - **Standards skills** — which apply per application and per workflow step
+- **Model** — for every workflow step whose `model` is unset. It is a policy choice detection cannot answer, so recommend `inherit` and never propose a model by role. Writing `model` is what settles the step, `inherit` included; write the full model name rather than an alias
 - **Conventions** — standards a newcomer could not infer from the code
 - **Tracker** — provider and access method, if detection was inconclusive
 
-On a re-run, ask only about keys new to the schema version (see [Re-running](#re-running)) and detections the user needs to correct — never re-ask a settled value.
+On a re-run, ask only about keys new to the schema version (see [Re-running](#re-running)) and detections the user needs to correct — never re-ask a settled value. A step whose `workflow.steps.<step>.model` is unset is not settled: ask for its model on every run until it carries a value, `inherit` included.
 
 ## 4 - Validate
 

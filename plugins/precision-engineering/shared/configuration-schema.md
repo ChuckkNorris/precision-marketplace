@@ -11,12 +11,13 @@ Unknown keys are preserved, never discarded — the config is extensible by desi
 - **Missing required key** (`version`, `applications[].name`, `applications[].path`) — halt and report which key.
 - **Stale `version`** — the config declares a version older than this file. Never halt: apply the documented default for every key added since, report the drift, and recommend `/pe-setup` to reconcile it. Only a config whose `version` is *absent* halts.
 - **Skills** resolve in this order, all loaded, later entries never replace earlier ones: `applications[].skills` (mandatory for that app) → `workflow.steps.<step>.skills` (mandatory for that step) → agent-discovered skills (optional).
+- **Model** applies to that step's subagent and is passed to the harness verbatim. It defaults to `inherit`, so a step with no model set runs on the session's own. **A step with no `model` is unconfigured**, which is what tells `/pe-setup` to ask for one; absent and empty read the same, so the template's `model: ""` is an unconfigured step. Never infer a model from a step's name or role. It is inert when a stage skill is invoked on its own — there is no subagent to launch, so the step runs in the calling session.
 - **Commands** are executed verbatim from repo root. If a declared command is absent for a step that requires it, halt and report — do not substitute a guess.
 
 ## Schema
 
 ```yaml
-version: 2                          # required; schema version — see Versioning
+version: 3                          # required; schema version — see Versioning
 
 repository:
   strategy: monorepo                # monorepo | polyrepo
@@ -37,10 +38,10 @@ workflow:
     claimTimeoutMinutes: 60         # a claim older than this is treated as abandoned
     maxTriggers: 10                 # resolutions allowed on one plan directory
   steps:                            # per-step mandatory skills (see resolution rules)
-    explore:   { skills: [] }
-    plan:      { skills: [] }
-    implement: { skills: [] }
-    review:    { skills: [] }       # standards the Reviewer judges the diff against
+    explore:   { skills: [], model: "" }  # unset model = inherit, and /pe-setup asks for one
+    plan:      { skills: [], model: "" }
+    implement: { skills: [], model: "" }
+    review:    { skills: [], model: "" }  # standards the Reviewer judges the diff against
   quality:
     coverageMin: 80                 # null disables the check
     blockOnLintError: true
@@ -131,6 +132,13 @@ reviews before merge. See [escalation.md](./escalation.md).
 ### `workflow.steps.<step>.skills`
 Applies the named skills to that step regardless of which app is in scope. Use for cross-cutting standards (e.g. `security-review` on `review`).
 
+### `workflow.steps.<step>.model`
+Runs that step's subagent on a named model instead of the session's own. Defaults to `inherit`: a step with no model set runs on whatever model the invoking session runs on. That absence also marks the step unconfigured, which is what makes `/pe-setup` ask — and setting it, `inherit` included, settles the step.
+
+**Use the full model name** (`claude-opus-5`), not a short alias — aliases are harness-specific where full names are not. `inherit` is this config's own sentinel rather than a model id: it means *inherit the current session*. Pass it through where the launch accepts `inherit`, and leave the launch's model unset where it does not — the subagent runs on the session's model either way.
+
+An opaque string the workflow never parses: it reaches the harness unchanged, so write the value that harness's subagent launch accepts. An unrecognized value is the harness's error to raise, not the workflow's to validate.
+
 ### `applications[].type`
 Selects the plan template the Planner structures that app's design sections from. `fullstack` emits both templates' sections in a single plan file — this is how MVC and monolith repos are modeled. Declare one application, not two.
 
@@ -156,6 +164,7 @@ Every bump adds a row below, naming each key involved. That list is the only inp
 |---|---|
 | 1 | Initial schema. |
 | 2 | Added `workflow.gates.channel`, `workflow.continuation` (`trigger`, `approveToken`, `reviseToken`, `claimLabel`, `claimTimeoutMinutes`, `maxTriggers`), and `git.pr.planTitlePattern`. Added `pr-comment` to `workflow.escalation.unattended`. All additive with defaults; a version 1 config runs unchanged on defaults. |
+| 3 | Added `workflow.steps.<step>.model`. A policy choice with nothing to detect, so `/pe-setup` asks for it per step rather than adopting a default; it defaults to `inherit`, and a step with no `model` is unconfigured — which is what prompts the question. |
 
 ## Extending the schema
 
