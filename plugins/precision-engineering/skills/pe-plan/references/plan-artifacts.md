@@ -1,21 +1,21 @@
 # Plan Artifacts
 
-How the Planner authors the two files it owns per application. The shared plan contract defines which files exist, who writes them, and the task status markers; this reference defines their sections and section-level rules.
+How the Planner authors the one file it owns per application. The shared plan contract defines which files exist, who writes them, and the task status markers; this reference defines their sections and section-level rules.
 
 ## `<app-name>.plan.md`
 
-Human-facing: what is being built and how it behaves.
+One file per application: the design a human approves at the gate, and the tasks a Developer implements from. Reconnaissance stays in the Explorer's `<app-name>.recon.md`, which you read and never edit.
 
 | Section | Written by |
 |---|---|
 | `## Tasks` | Planner; Developer maintains the markers |
 | Design sections, from the app's plan template | Planner |
 | `## Extensibility`, `## Test scenarios` | Planner |
-| `## AI Instructions` | Planner — a one-line pointer to `<app-name>.instructions.md`, nothing more |
+| `## Task details` | Planner; Developer appends `Notes` |
 
 Call stacks stay with the endpoint or flow they describe — they are how a reviewer catches a design error, not implementation trivia.
 
-The checklist sits first so status is the first thing any reader sees:
+The checklist sits first, so status is the first thing any reader sees:
 
 ```markdown
 # <app-name> — <Feature Title>
@@ -39,7 +39,7 @@ Structured by the plan template for the application's `type`:
 | `fullstack` | Both, backend sections first, in the one plan file |
 | `library`, `infrastructure` | No template — document public API surface changes, consumer impact, and migration path |
 
-A template supplies design sections only. The file heading, `Tasks`, and `AI Instructions` come from this reference; `Current state`, `File manifest`, and `Task details` live in the instructions file. The template's own title and requirement summary are dropped, because `overview.md` already carries them.
+A template supplies design sections only. The file heading, `Tasks`, and `Task details` come from this reference. The template's own title and requirement summary are dropped, because `overview.md` already carries them.
 
 - Emit the sections that apply, in template order.
 - Name every section with nothing to record in a `**Not applicable:**` line with its reason, rather than writing it out as a stub — `**Not applicable:** Query String Parameters — the endpoint takes none.` One line closes the file's top-level sections; one closes each endpoint or component block whose own subsections were dropped.
@@ -55,57 +55,27 @@ A template supplies design sections only. The file heading, `Tasks`, and `AI Ins
 | `#### Failure modes` | Per endpoint: each failure condition with the status code and body it produces. | `backend`, `service` |
 | `#### States`, `#### Accessibility`, `#### Wireframe` | Per component: loading, error, and empty treatments; accessibility requirements; a low-fidelity wireframe for each new or changed flow. | `frontend`, `mobile` |
 
-Finally `## AI Instructions` — one line pointing at `<app-name>.instructions.md`. It exists so a reader of the plan knows where the execution detail went, and carries no detail itself.
-
-## `<app-name>.instructions.md`
-
-Agent-facing. Written for a Developer starting with no context beyond this file.
-
-| Section | Written by |
-|---|---|
-| `## Current state` | Explorer, before any design exists. **Never edited afterward.** |
-| `## File manifest` | Planner |
-| `## Task details` | Planner; Developer appends `Notes` |
-
-The Explorer's `## Current state` already opens the file; append beneath it. A fact in it that turns out to be wrong gets a dated correction line appended to the section, never a rewrite of the original claim.
-
-Then the **file manifest** — every path the Developer is authorized to touch:
-
-```markdown
-## File manifest
-| Action | Path | Purpose |
-|---|---|---|
-| create | `src/middleware/rateLimit.ts` | Token-bucket limiter |
-| modify | `src/app.ts` | Register middleware |
-| delete | `src/legacy/throttle.ts` | Superseded |
-```
-
-Then the task details.
-
 ### Task format
 
-Every task is independently implementable and independently verifiable, and carries everything needed to execute it without reading the plan file.
+Every task is independently implementable and independently verifiable. It states intent and integration points; **how to satisfy it is the Developer's judgment.**
 
 ```markdown
 ### T-003 — Add rate limit middleware
-- **Depends on:** T-001
-- **Files:** create `src/middleware/rateLimit.ts`; modify `src/app.ts`
-- **Reference:** `src/middleware/auth.ts:34` for the middleware signature; `api.plan.md`
-  **Endpoints → Create Order** for the response contract.
+- **Depends on:** T-001 - `contract:` gateway T-010 (the 429 body, fixed as I2)
 - **Change:** Token-bucket limiter, 100 req/min per API key, 429 with `Retry-After`.
+  Sits in the request pipeline ahead of routing, per **Endpoints → Create Order**.
 - **Acceptance:** 101st request within a minute returns 429; counter resets after 60s;
   requests without an API key bypass the limiter.
-- **Verify:** `pnpm -C apps/api test src/middleware/rateLimit.test.ts`
+- **Verify:** `pnpm -C apps/api test`
 - **Notes:** Added by the Developer only — decisions the plan did not anticipate.
 ```
 
 Rules:
 
-- Every task in the details section has a matching checklist entry in `<app-name>.plan.md`, and vice versa. The two files are written together; a task in one and not the other is the most likely way this split breaks.
-- `Depends on` is honest and complete. It is what lets applications with non-overlapping manifests implement concurrently, so an omitted dependency shows up as a race rather than a delay.
-- `Reference` names the files to read before starting, and the plan sections carrying the contract this task implements. A task whose `Reference` sends the Developer hunting is under-specified.
-- `Verify` must be a runnable command drawn from the app's configured `commands`. "Manually check" is not a verification.
+- Every task in the details section has a matching checklist entry in `## Tasks`, and vice versa.
+- `Depends on` is honest and complete, and every edge reaching another application is tagged. `contract:` means the task needs only an interface already fixed under **Interface contract**, so both sides build concurrently. `runtime:` means it needs that application's code built, running, or seeding data, so this task waits. Implementation schedules tasks from these tags: an omitted edge becomes a race, an over-tagged `runtime:` idles work that could have run, and a `runtime:` edge mistagged `contract:` becomes a broken build.
+- `Change` names behavior, contracts, and where this connects to what already exists — never file layout, naming, or mechanics. Those are the Developer's to decide against `<app-name>.recon.md`.
+- `Verify` must be a runnable command drawn from the app's configured `commands`, and the **cheapest one that would catch this task failing** — a typecheck for a type-only change, a single test file where the runner takes one. The exit gate runs the full set once at the end, so a task reaching for it needlessly pays for it on every task. "Manually check" is not a verification.
 - `Acceptance` states observable behavior, never implementation detail.
-- Every path in a task appears in that application's file manifest. Tasks touching a path absent from it are invalid.
 - A task no single agent can complete in one sitting is too large — split it.
 - `Notes` is the Developer's alone. Never write it.

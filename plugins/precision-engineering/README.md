@@ -2,7 +2,7 @@
 
 A configuration-driven agentic development workflow for enterprise-grade codebases. It explores the code, writes a plan a human approves, implements it through specialized subagents, and reviews the result adversarially before opening a pull request.
 
-Every run leaves an audit record: reconnaissance before design, a plan signed off at a gate, implementation bounded by a file manifest, and a reviewer that judges the diff without the ability to edit it.
+Every run leaves an audit record: reconnaissance before design, a plan signed off at a gate, implementation bounded by an approved plan, and a reviewer that judges the diff without the ability to edit it.
 
 ## Install
 
@@ -23,14 +23,16 @@ Each stage is also invocable on its own — `pe-explore`, `pe-plan`, `pe-impleme
 
 ```
 pe-develop <ticket|pr|description>
-  0  Orchestrator   load config, normalize ticket -> brief.md + overview.md
+  0  Orchestrator   load config -> run-context.md, start installs,
+                    normalize ticket -> brief.md + overview.md
                     (or resume: match overview.md to the current branch, jump to its status)
   1  Orchestrator   create branch
-  2  Explorer       pe-explore    -> <app>.instructions.md "Current state"  (one per app, concurrent)
-  3  Planner        pe-plan       -> <app>.plan.md + rest of <app>.instructions.md
+  2  Explorer       pe-explore    -> <app>.recon.md  (one per app, concurrent)
+  3  Planner        pe-plan       -> <app>.plan.md
   4  [GATE]         plan approval — in session, or published as a draft PR
   5  Developer      pe-implement  -> commits; green build/test/lint/typecheck to exit
-                                     (concurrent per app when file manifests do not overlap)
+                                     (scheduled in waves by task; `contract:` deps
+                                      run concurrently, `runtime:` deps are barriers)
   6  Reviewer       pe-review     -> judge the diff -> <app>.findings.md
                                      (blocking findings route back to 5)
   7  [GATE]         PR approval, then mark ready (or push and open)
@@ -42,7 +44,7 @@ pe-develop <ticket|pr|description>
 
 **The exit gate runs once.** The Developer records each `build`, `test`, `lint`, and `typecheck` result against the commit it ran on; the orchestrator confirms that commit is `HEAD`, and the Reviewer reads that evidence rather than re-running the repository's slowest commands. Nothing is approved on unproven green — a verification table that is absent, red, or stale sends the gate back to the Developer.
 
-**Cost is tiered by role.** The Explorer's job is search and citation, so it runs on Sonnet; the Planner, Developer, and Reviewer make judgment calls and run on Opus. Explorers fan out per application, and Developers do too when their manifests do not overlap.
+**Cost is configured, not assumed.** Every stage runs on the model of the session that invoked it, unless `workflow.steps.<step>` names otherwise — a cheap model for reconnaissance, a stronger one where judgment is dense. The plugin pins nothing: a repository that wants a tier states it, and one that does not gets a pipeline that follows whatever the invoking session runs on. Explorers fan out per application, and Developers do too when their manifests do not overlap.
 
 **One configuration, both environments.** A gate set to `approve` means a human decides; *how* they are asked is detected at runtime. Attended — an interactive Claude Code or IDE session — the plan is presented in the conversation. Unattended — a cloud agent, routine, or CI job — it is committed and published as a draft pull request instead. Nothing in the config or the skills changes between the two.
 
@@ -60,13 +62,13 @@ Every run writes to `docs/plans/<feature-slug>/` in the consuming repository:
 |---|---|
 | `brief.md` | The normalized requirement, whatever its source. |
 | `overview.md` | Scope, cross-cutting design, risks, rollback, open questions, run state. |
-| `<app>.plan.md` | Task checklist and the design a human approves at the gate. |
-| `<app>.instructions.md` | Reconnaissance, file manifest, and per-task execution detail for the Developer. |
+| `<app>.recon.md` | The Explorer's current-state reconnaissance. Written once, never edited. |
+| `<app>.plan.md` | The design a human approves at the gate, and the task checklist. |
 | `<app>.findings.md` | The Reviewer's verdict and ranked findings. |
 
 `overview.md` is also the continuation record: it carries the branch, the run status, and each gate's standing decision, so a later invocation resumes from the files rather than from a conversation.
 
-Each application gets two files, split by audience: the approver never reads manifest rows, and the Developer never pays for prose it cannot act on. Progress lives in the checklists themselves — `[ ]` not started, `[~]` in progress, `[x]` verified complete.
+The plan is the approval artifact: what is being built, how it behaves, and where it connects. Low-level mechanics are the Developer's judgment, and reconnaissance sits beside it in `recon.md` rather than in front of the approver. Progress lives in the checklists themselves — `[ ]` not started, `[~]` in progress, `[x]` verified complete.
 
 ## Contents
 
@@ -87,8 +89,8 @@ This directory is self-contained: agents and skills reference `shared/` and each
 
 ## Source
 
-This directory is the source of truth for the plugin. `agents/` carries the Cursor frontmatter
-(`model`) and explicit procedure links; `skills/` and `shared/` are harness-agnostic. Contribute
-here — see [CONTRIBUTING.md](../../CONTRIBUTING.md).
+This directory is the source of truth for the plugin. `agents/` carries each role and its explicit
+procedure link; `agents/`, `skills/`, and `shared/` are all harness-agnostic — no file names a model.
+Contribute here — see [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 MIT licensed.

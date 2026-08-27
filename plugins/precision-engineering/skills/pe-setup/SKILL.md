@@ -36,13 +36,15 @@ Flag low-confidence detections explicitly rather than burying them.
 Ask only what detection cannot answer. Use structured questions with a recommended default. Keep to one round:
 
 - **Test strategy** — `tdd`, `test-after`, or `none`
+- **Development strategy** — `sequential` or `parallel`. Recommend `sequential`; `parallel` is only offered once the isolation scan below comes back clean
 - **Gates** — which of plan / implementation / PR require human approval. The channel is automatic: in session when attended, on the pull request when not, so never ask which environment the config is for
 - **Continuation** — the pull request trigger tokens, when any gate requires approval
 - **Standards skills** — which apply per application and per workflow step
+- **Model** — for every workflow step whose `model` is unset. It is a policy choice detection cannot answer, so recommend `inherit` and never propose a model by role. Writing `model` is what settles the step, `inherit` included; write the full model name rather than an alias
 - **Conventions** — standards a newcomer could not infer from the code
 - **Tracker** — provider and access method, if detection was inconclusive
 
-On a re-run, ask only about keys new to the schema version (see [Re-running](#re-running)) and detections the user needs to correct — never re-ask a settled value.
+On a re-run, ask only about keys new to the schema version (see [Re-running](#re-running)) and detections the user needs to correct — never re-ask a settled value. A step whose `workflow.steps.<step>.model` is unset is not settled: ask for its model on every run until it carries a value, `inherit` included.
 
 ## 4 - Validate
 
@@ -51,6 +53,23 @@ On a re-run, ask only about keys new to the schema version (see [Re-running](#re
 Run non-mutating commands (`build`, `test`, `lint`, `typecheck`) directly. Never run `migrate` or any command that mutates state — mark it `unvalidated` and tell the user.
 
 Drop commands that fail and report them. Omitting a command is recoverable; declaring a broken one is not.
+
+### Isolation scan — `parallel` only
+
+Whether two stacks can run at once cannot be proven here: it is a mutating, expensive test. Scan statically instead, and write the `runtime` block marked `unvalidated`, exactly as `migrate` is.
+
+| Look at | For |
+|---|---|
+| Compose and container files | Fixed host ports under `ports:`, `container_name:`, shared named volumes |
+| Framework launch config | Fixed ports — `launchSettings.json`, vite/webpack config, `application.yml` |
+| Source and test config | Hardcoded `localhost:<port>`, base URLs, CORS allowlists |
+| Test runners | Servers the runner starts itself; whether it attaches to one already running, or binds the next free port when its own is taken |
+| Connection strings | A single database name or host port every run would share |
+
+Report each fixed value with its file and line — a silent fallback counts as fixed — then take one of two paths:
+
+- **All parameterizable** — propose the `runtime` block, naming the environment variable each value would read.
+- **Some are not** — list the changes the repository needs and offer `sequential`, which needs none. Never write `parallel` for a repository that cannot honor it; the run would fail deep inside stage 5 rather than here.
 
 ## 5 - Write
 
@@ -63,7 +82,7 @@ Report: applications detected, commands validated, commands dropped and why, and
 Idempotent by requirement. On an existing config:
 
 - **Reconcile the schema version first.** Compare the config's `version` against the current one in [configuration-schema.md](../../shared/configuration-schema.md). If the config is older, read that file's Versioning table and, for every key added since: adopt the documented default where detection or the default settles it, and **ask the user for the rest** — a value that is a policy choice, not a repository fact, has no default worth guessing. Then write the current `version`. Report each key adopted and each key asked about. A config already at the current version skips this step; never rewrite `version` without having reconciled the keys behind it.
-- **Preserve** every human-authored value — conventions, gates, skills, tracker settings, and any key not in the schema. Extensibility is the point; unknown keys survive untouched.
+- **Preserve** every human-authored value — conventions, gates, `developmentStrategy`, skills, tracker settings, and any key not in the schema. Extensibility is the point; unknown keys survive untouched. Never downgrade `parallel` to `sequential` because a re-scan found new fixed ports — report them as drift and let the user decide.
 - **Refresh** detected values, and report each change as a diff for confirmation rather than applying it silently.
 - **Report** applications that appeared or disappeared, and commands that stopped working.
 

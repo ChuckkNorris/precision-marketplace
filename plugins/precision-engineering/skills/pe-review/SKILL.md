@@ -9,7 +9,7 @@ Judge the diff; never change it. Everything wrong with it — a defect, a missed
 
 ## Inputs
 
-The plan directory, the diff against the base branch, and the resolved configuration. One Reviewer covers the whole run — every application in scope, every lens — so cross-application defects surface. Invoked standalone: read `.agents/precision-engineering.config.md` yourself and diff against `git.pr.base`.
+The plan directory, the diff against the base branch, and `run-context.md` for the resolved configuration and skills. One Reviewer covers the whole run — every application in scope, every lens — so cross-application defects surface. Invoked standalone: read `.agents/precision-engineering.config.md` yourself and diff against `git.pr.base`.
 
 **Invoked standalone with no plan directory**, drop the plan-fidelity lens and say so in the output. Every other lens applies unchanged.
 
@@ -22,8 +22,11 @@ The exit gate is already run and recorded. Read the `overview.md` verification t
 | Table state | Do |
 |---|---|
 | Green, every commit at `HEAD` | That is the gate. Proceed to the lenses. |
-| Missing, red, or a commit behind `HEAD` | Raise a blocking finding and stop. |
+| Missing or red | Raise a blocking finding and stop. |
+| Stale — the orchestrator named rows behind `HEAD` | Re-run those rows yourself and record the confirming commit. Red on a re-run is a blocking finding. |
 | Invoked standalone | Run the gate yourself for every in-scope application and record it. |
+
+Running the gate at all — re-running named rows, or invoked standalone — means bringing up a stack: `runtime.up`, then `commands.migrate` for each in-scope application declaring one, then `runtime.down` when finished. Under `parallel` your slot's allocation is recorded in `run-context.md`; use it rather than the defaults, which a Developer or the user may still hold. Running it is evidence, not a change to the diff.
 
 ## Lenses
 
@@ -31,7 +34,7 @@ Examine the diff through every lens. Assume it is broken until the diff shows ot
 
 The lenses interact — a test gap that is really a defect, a standards violation that opens a hole, fidelity drift that explains a bug. Report each root cause once, under the lens that best explains it, rather than the same fault once per lens that can see it.
 
-**Plan fidelity** — Is every task marked `[x]` actually implemented, and is everything implemented actually marked? A marker without matching code, or code without a matching task, is a finding. Does anything in the diff fall outside the file manifest? Was anything from **Out of scope** built anyway? Does the implementation match the planned call stacks, or did it drift into a different design?
+**Plan fidelity** — Is every task marked `[x]` actually implemented, and is everything implemented actually marked? A marker without matching code, or code without a matching task, is a finding. Was anything from **Out of scope** built anyway? Does the implementation match the planned call stacks, or did it drift into a different design?
 
 **Correctness** — Trace the changed paths by hand. Boundaries, null and empty cases, error paths, concurrency, transaction scope, partial failure. For each defect, construct the concrete input that triggers it.
 
@@ -80,7 +83,7 @@ A remediation reaching files outside both sets means the Developer worked beyond
 ## Guardrails
 
 - The diff is read-only. Never edit source, tests, or documentation — every improvement is a finding the Developer applies.
-- The findings files are the only files you write — except invoked standalone, where you also record the gate evidence you ran.
+- The findings files are the only files you write — except the gate evidence for rows you re-ran or ran standalone.
 - Never approve on unproven green — a verification table absent, red, or stale against `HEAD` is a blocking finding.
 - Every finding names its location and what is wrong; correctness and security findings also carry a concrete failure scenario. Anything you cannot substantiate belongs under **Questions**.
 - Verify before reporting; a plausible false positive costs more cycles than the defect would have.

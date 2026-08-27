@@ -19,8 +19,8 @@ Every change runs every stage. There is no abbreviated path — a change too sma
 |---|---|---|---|---|
 | 0 | Resolve context | orchestrator | — | `brief.md`, `overview.md` |
 | 1 | Branch | orchestrator | — | feature branch |
-| 2 | Explore | Explorer | `pe-explore` | `<app>.instructions.md` — `## Current state` |
-| 3 | Plan | Planner | `pe-plan` | `<app>.plan.md`, rest of each `<app>.instructions.md` |
+| 2 | Explore | Explorer | `pe-explore` | `<app>.recon.md` |
+| 3 | Plan | Planner | `pe-plan` | `<app>.plan.md` |
 | 4 | Plan gate | orchestrator | — | gate |
 | 5 | Implement | Developer | `pe-implement` | commits, green gate |
 | 6 | Review | Reviewer | `pe-review` | `<app>.findings.md` |
@@ -32,9 +32,10 @@ Every change runs every stage. There is no abbreviated path — a change too sma
 2. **Locate the run.** Look for a plan directory under `docs/plans/` whose `overview.md` records the current branch — given a pull request reference, check out its branch first.
 3. **No plan directory — a new run.** Normalize the argument into a brief per [ticket-ingestion.md](../../shared/ticket-ingestion.md); derive `<feature-slug>`, create `docs/plans/<feature-slug>/`, and write `brief.md`; determine applications in scope, asking per [escalation.md](../../shared/escalation.md) when ambiguous, since a wrong scope wastes the entire pipeline; then seed `overview.md` — requirement, in and out of scope, apps in scope, status `planning`. The Planner fills in design, risks, and rollback.
 4. **A plan directory — a resume.** Take applications in scope from `overview.md`'s **Apps in scope**. Never re-derive it: the plan was built against that scope, and a fresh judgment that disagrees with it invalidates the plan.
-5. Resolve skills per the schema's resolution rules. Pass resolved config, scope, and skill list into every subagent; **subagents do not re-read config.**
+5. Resolve skills per the schema's resolution rules, read each step's `model` from `workflow.steps`, then write `run-context.md` per [plan-contract.md](../../shared/plan-contract.md) — resolved config, scope, and each application's skill list, in one file. Pass every subagent that file's path and its own application name; **subagents read `run-context.md`, never the config file.** One file written once carries the same no-drift guarantee as restating it in every prompt, at a fraction of the handoff cost. On a resume, carry any existing `## Port allocations` section forward unchanged — this step rewrites the rest of the file, and reallocating strands the containers still holding the old ports. A model is not context you pass — it is applied when you launch the subagent, per **Subagent dispatch**.
+6. **Preflight, then start the installs.** Run every `runtime.preflight` command first and report any failure before going further — a missing tool or a stopped container daemon fails every Developer at stage 5 instead of here. Then, under `sequential`, run each in-scope application's `commands.install` in the background: they are among the slowest commands in the run and nothing before stage 5 needs them, so an install still running when a Developer starts is pure delay. Report a failure; never hold stage 2 waiting on one. Under `parallel`, skip the installs — each worktree installs its own dependencies, so a warm install in the main checkout is work thrown away.
 
-**Steps 1, 2, and 5 run on every invocation.** A resumed run needs config, scope, and skills exactly as a new one does — subagents never re-read them, so a resume that skips this stage reaches Implement with no commands and no standards.
+**Steps 1, 2, 5, and 6 run on every invocation.** A resumed run needs config, scope, skills, dispatch settings, and warm installs exactly as a new one does — subagents never re-read config, so a resume that skips this stage reaches Implement with no commands and no standards.
 
 **Seed `overview.md` before any subagent runs.** It is the resume record, and a run that dies before it exists cannot be continued.
 
@@ -44,7 +45,7 @@ Continue from the located run's status:
 
 | Status | Continue at |
 |---|---|
-| `planning` | Stage 2 — or stage 3, where every in-scope application's `## Current state` is already populated |
+| `planning` | Stage 2 — or stage 3, where every in-scope application already has a `<app>.recon.md` |
 | `awaiting-approval`, plan gate approved in `## Gates` | Stage 5 |
 | `awaiting-approval`, feedback present | Planner revision per **Continuation** |
 | `in-progress` | Stage 5, from the first task marked `[~]` or `[ ]` |
@@ -60,31 +61,55 @@ On a dirty working tree: stop and ask, or unattended, stop and report.
 
 ### 2 - Explore
 
-Run one Explorer per in-scope application, concurrently when more than one is in scope. Each writes `## Current state` into its own application's `<app>.instructions.md`, so concurrent Explorers never contend for a path.
+Run one Explorer per in-scope application, concurrently when more than one is in scope. Each writes its own application's `<app>.recon.md`, so concurrent Explorers never contend for a path.
 
 ### 3 - Plan
 
 One Planner covering all in-scope applications, so cross-application design stays coherent.
 
-Each application gets two files: `<app>.plan.md` for the human at stage 4, and `<app>.instructions.md` for the Developer at stage 5. Present the former at the gate; the latter is not review material.
+Each application gets one plan file, `<app>.plan.md` — design, integration points, and tasks. It is the whole gate artifact: reconnaissance stays in `<app>.recon.md`, and the Developer decides low-level mechanics itself at stage 5.
 
 ### 4 - Plan gate
 
 **Resolve escalations first.** If the Planner returned questions, ask them per [escalation.md](../../shared/escalation.md), record the answers in `overview.md`, and route back to the Planner to revise the plan before presenting it. A plan with unresolved questions is not ready for approval, whatever the gate setting.
 
-Then apply `workflow.gates.plan` per **Gate resolution**. The artifact is the plan summary, task count, and file manifest; published to a pull request, it is the plan commit itself, titled per `git.pr.planTitlePattern` and opened as a draft.
+Then apply `workflow.gates.plan` per **Gate resolution**. The artifact is the plan summary and its task count; published to a pull request, it is the plan commit itself, titled per `git.pr.planTitlePattern` and opened as a draft.
 
 ### 5 - Implement
 
-Run applications **concurrently** when their file manifests share no path and no task's `Depends on` reaches another application — the plan states both, so this is a check, not a judgment. Otherwise run them sequentially in dependency order.
+**Schedule tasks, not applications.** Serializing a whole application because one of its later tasks waits on another idles every independent task behind it — usually most of the stage. Build the schedule from the plans' `Depends on` tags:
 
-Each concurrent Developer commits its own application's tasks. An overlap surfacing mid-stage stops both and restarts the stage sequentially.
+| Edge | Means | Effect |
+|---|---|---|
+| `contract:` | Needs only an interface already fixed under **Interface contract** | Not a barrier. Both sides run concurrently. |
+| `runtime:` | Needs the other application's code built, running, or seeding data | A barrier. The dependent task waits. |
+
+Cut the schedule into waves: a task joins the current wave when every unmet dependency it carries is `contract:`. Run one Developer per application per wave, all concurrently, each given only that wave's task IDs. An application with tasks in later waves gets its Developer **continued**, not respawned — its context is the point.
+
+**Under `sequential`**, run one Developer at a time in wave order. Nothing is allocated; the repository runs on its default ports.
+
+**Under `parallel`**, before spawning each wave:
+
+1. Assign every Developer a slot, numbered from 1 so the defaults stay free for whoever is working by hand. A slot is held for the run's life and never recycled — reusing one races the teardown that freed it.
+2. Compute each port as `default + slot × runtime.portBlockSize`, then check the whole set is mutually distinct and disjoint from every default. An overlap is a `portBlockSize` too small for the repository's defaults: stop and report it rather than allocating on top of one.
+3. Bind-probe each port and stop on an occupied one, naming it — a half-bound stack fails later and less clearly.
+4. Append the allocations to `run-context.md` per [plan-contract.md](../../shared/plan-contract.md), then spawn — never while a Developer is reading that file.
+
+Give each Developer its own worktree plus its slot's environment, with `{port:<name>}` substituted through `runtime.env`. **Git refuses to check out one branch in two worktrees**, so each slot's worktree gets its own branch off the run's branch, named `<branch>-<slot>`. Merge every slot branch back into the run's branch at the end of its wave, then delete the branch and remove its worktree, so the next wave, the Reviewer, and the pull request all see one history and one checkout. A conflict there means two Developers wrote the same application's files, which is a scheduling defect — report it rather than resolving it blind.
+
+Where the harness cannot provide a worktree, `parallel` is unavailable: run `sequential` instead and report why.
+
+Sweep anything carrying this run's prefix — stacks, worktrees, and slot branches — at the start of this stage and again at stage 7. A Developer that died mid-wave cleaned up nothing: its containers still hold its ports and its worktree still holds its branch. This sweep is the only cleanup that survives a dead subagent.
+
+A `runtime:` edge the plan tagged `contract:` breaks the build. Stop the affected Developers, re-run that wave sequentially, and report it — it is a plan defect, not a scheduling one.
 
 Set status `in-progress` when the stage starts, and record each Developer's returned exit-gate rows in the `overview.md` verification table as it finishes — concurrent Developers return their results rather than writing that file. Apply `workflow.gates.implementation` per **Gate resolution** before stage 6.
 
 ### 6 - Review
 
-**Confirm the gate evidence first** — yours, because you own git. Every row of the `overview.md` verification table must be green at a commit equal to `HEAD`; that is the gate, and the Reviewer reads it rather than re-runs it. Anything else goes back to the Developer before review starts.
+**Confirm the gate evidence first** — yours, because you own git. Every row of the `overview.md` verification table must be green and still valid at `HEAD`; that is the gate, and the Reviewer reads it rather than re-runs it.
+
+A row behind `HEAD` is still valid where nothing since touched what it covers. A row is stale when `git diff --name-only <row-commit>..HEAD -- <app-path>` is non-empty, and the row for any application whose tests exercise another end to end is always stale, since those cover paths outside their own. **Name the stale rows for the Reviewer, which re-runs them in its own isolated stack and records the confirming commit.** Anything red goes back to the Developer before review starts.
 
 Then run **one Reviewer across every application in scope**, telling it the commit under review. It changes nothing: every finding — a defect, a missed requirement, a standards or documentation gap — comes back to you as a report to route. **You own `overview.md` status**: `complete` when every application approves, `in-review` otherwise.
 
@@ -110,6 +135,23 @@ A gate set to `approve` means a human decides. **Which channel carries that deci
 | Unattended | Commit the artifacts, push, and open or update the draft pull request. Record the gate `pending` in `## Gates` with the URL, set the matching status, and **stop**. Approval arrives later per **Continuation**. |
 
 Never downgrade a gate because its channel is inconvenient: an unattended run does not proceed on `auto` reasoning, and an attended one does not publish to avoid asking.
+
+## Subagent dispatch
+
+Each stage's subagent runs on the `model` declared for that stage's step in `workflow.steps`:
+
+| Step | Stage | Subagent |
+|---|---|---|
+| `explore` | 2 | Explorer |
+| `plan` | 3 | Planner |
+| `implement` | 5 | Developer |
+| `review` | 6 | Reviewer |
+
+Set a model on the launch **only where the config declares one**. A step with no `model` defaults to `inherit` — inherit the current session. Pass `inherit` where the launch accepts it, and omit the launch's model parameter where it does not; either way the subagent stays on your own session's model. Never infer a model from a role: no step has one until a repository names it. Pass a declared value as written rather than composing one — the values a subagent launch accepts are not always those your own session offers.
+
+A value the harness rejects is a config error: report it, name the step, and stop. Never fall back to another model.
+
+This is a launch-time setting. A continued subagent keeps the model it started with, so a config edited mid-run takes effect on the next fresh spawn — see **Follow-up routing**. Concurrent Explorers and Developers each launch on their own step's model.
 
 ## Continuation
 
@@ -149,13 +191,14 @@ Route every follow-up to the subagent that owns the artifact, continuing the exi
 | Current-state questions about the codebase | Explorer |
 | Branch, commits, PR | orchestrator |
 
-When the owning agent's context is gone, re-hydrate a fresh instance from the plan directory — `overview.md` run state, the app plans' task checklists, and the instructions files' `## Current state` are authoritative over any agent's recollection.
+When the owning agent's context is gone, re-hydrate a fresh instance from the plan directory — `overview.md` run state, the recon files, and the app plans' task checklists are authoritative over any agent's recollection.
 
 ## Guardrails
 
-- Config is read once, in stage 0, and passed down. Subagents that re-read it drift. Stage 0 runs its config, scope, and skill resolution on a resume too.
+- Config is read once, in stage 0, and passed down. Subagents that re-read it drift. Stage 0 runs its config, scope, skill, and dispatch resolution on a resume too — a step's `model` is applied when you launch its subagent, never passed as context for it to act on.
+- Every `model` a step declares launches with it applied, or the run stops with it named. A declared model in neither the launch nor the report was dropped.
 - After the plan gate, **only you write `overview.md`** — status, verification rows, blockers, and gates. Subagents return those facts; you record them. Transcribing what a subagent returns is run state, which you own, not the subagent's work.
-- The exit gate runs once, in stage 5, and is confirmed by commit SHA thereafter. A stage that re-runs it is paying the run's slowest commands for an answer the verification table already holds.
+- The exit gate runs once, in stage 5, and is confirmed by commit SHA thereafter. A stale row is re-run by the Reviewer, never by you. A stage that re-runs it is paying the run's slowest commands for an answer the verification table already holds.
 - Gates are the only pause points. Never invent one, never skip one.
 - Every gate resolution is recorded in `## Gates` with who resolved it and the signal. An unrecorded approval cannot be audited and will be re-asked on the next resume.
 - Every stage runs on every change. Never skip Explore or Plan because a change looks small.
