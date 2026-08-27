@@ -152,6 +152,13 @@ reviews before merge. See [escalation.md](./escalation.md).
 ### `workflow.steps.<step>.skills`
 Applies the named skills to that step regardless of which app is in scope. Use for cross-cutting standards (e.g. `security-review` on `review`).
 
+### `workflow.steps.<step>.model`
+Runs that step's subagent on a named model instead of the session's own. Defaults to `inherit`: a step with no model set runs on whatever model the invoking session runs on. That absence also marks the step unconfigured, which is what makes `/pe-setup` ask — and setting it, `inherit` included, settles the step.
+
+**Use the full model name** (`claude-opus-5`), not a short alias — aliases are harness-specific where full names are not. `inherit` is this config's own sentinel rather than a model id: it means *inherit the current session*. Pass it through where the launch accepts `inherit`, and leave the launch's model unset where it does not — the subagent runs on the session's model either way.
+
+An opaque string the workflow never parses: it reaches the harness unchanged, so write the value that harness's subagent launch accepts. An unrecognized value is the harness's error to raise, not the workflow's to validate.
+
 ### `runtime`
 Read only when `developmentStrategy` is `parallel`. Omit it when the repository needs no isolation.
 
@@ -165,13 +172,6 @@ Read only when `developmentStrategy` is `parallel`. Omit it when the repository 
 | `preflight` | Tool-availability checks. Run under **both** strategies, before any stage does work. |
 
 Injection is by environment variable, never by rewriting a command string — that is what keeps this repository-agnostic.
-
-### `workflow.steps.<step>.model`
-Runs that step's subagent on a named model instead of the session's own. Defaults to `inherit`: a step with no model set runs on whatever model the invoking session runs on. That absence also marks the step unconfigured, which is what makes `/pe-setup` ask — and setting it, `inherit` included, settles the step.
-
-**Use the full model name** (`claude-opus-5`), not a short alias — aliases are harness-specific where full names are not. `inherit` is this config's own sentinel rather than a model id: it means *inherit the current session*. Pass it through where the launch accepts `inherit`, and leave the launch's model unset where it does not — the subagent runs on the session's model either way.
-
-An opaque string the workflow never parses: it reaches the harness unchanged, so write the value that harness's subagent launch accepts. An unrecognized value is the harness's error to raise, not the workflow's to validate.
 
 ### `applications[].type`
 Selects the plan template the Planner structures that app's design sections from. `fullstack` emits both templates' sections in a single plan file — this is how MVC and monolith repos are modeled. Declare one application, not two.
@@ -200,9 +200,8 @@ Every bump adds a row below, naming each key involved. That list is the only inp
 | Version | Added / changed |
 |---|---|
 | 1 | Initial schema. |
-| 3 | Added `workflow.developmentStrategy`, the `runtime` block, and `applications[].dependsOn`. Additive: a version 2 config runs unchanged on `sequential`, which is the pre-existing behavior. |
 | 2 | Added `workflow.gates.channel`, `workflow.continuation` (`trigger`, `approveToken`, `reviseToken`, `claimLabel`, `claimTimeoutMinutes`, `maxTriggers`), and `git.pr.planTitlePattern`. Added `pr-comment` to `workflow.escalation.unattended`. All additive with defaults; a version 1 config runs unchanged on defaults. |
-| 3 | Added `workflow.steps.<step>.model`. A policy choice with nothing to detect, so `/pe-setup` asks for it per step rather than adopting a default; it defaults to `inherit`, and a step with no `model` is unconfigured — which is what prompts the question. |
+| 3 | Added `workflow.developmentStrategy`, the `runtime` block, `applications[].dependsOn`, and `workflow.steps.<step>.model`. The first three are additive: a version 2 config runs unchanged on `sequential`, which is the pre-existing behavior. `model` is a policy choice with nothing to detect, so `/pe-setup` asks for it per step rather than adopting a default; it defaults to `inherit`, and a step with no `model` is unconfigured — which is what prompts the question. |
 
 ## Extending the schema
 
