@@ -17,7 +17,7 @@ Unknown keys are preserved, never discarded — the config is extensible by desi
 ## Schema
 
 ```yaml
-version: 4                          # required; schema version — see Versioning
+version: 5                          # required; schema version — see Versioning
 
 repository:
   strategy: monorepo                # monorepo | polyrepo
@@ -44,6 +44,7 @@ workflow:
     implement:   { skills: [], model: "", contextBudget: 120000 }
     review:      { skills: [], model: "", contextBudget: 120000 }
     stackDoctor: { skills: [], model: "" }  # diagnoses runtime-stack failures; disposable
+    research:    { skills: [], model: "" }  # answers one external-dependency question; disposable
   quality:
     coverageMin: 80                 # null disables the check
     blockOnLintError: true
@@ -168,7 +169,16 @@ Tokens of context after which that step's subagent is retired and its successor 
 
 Default `120000`. Below roughly `60000` the re-read at each handoff starts to cost more than the accumulation it avoids, and the run fragments into agents that spend their first turns orienting.
 
-**A budget is not a hard stop.** It authorizes the orchestrator to retire the subagent at the next point the plan directory is a complete handoff record — a task marked `[x]` and committed. See **Retiring a subagent** in [pe-develop](../skills/pe-develop/SKILL.md).
+**A budget is not a hard stop.** It authorizes the orchestrator to retire the subagent at the next point the plan directory is a complete handoff record, and each step has its own:
+
+| Step | Safe handoff point | Consequence |
+|---|---|---|
+| `implement` | A task marked `[x]`, verified, and committed | Binds within a stage, since tasks commit throughout it |
+| `review` | Between remediation cycles, once the findings files are written | Binds **across** cycles only — a single pass cannot be retired part-way |
+
+So `review`'s budget bounds what accumulates over repeated cycles, not the first pass. **A first pass that alone exceeds the budget is a signal, not a retirement:** report the diff as too large for one reviewer and carry on, rather than splitting a judgment whose whole value is seeing every application at once.
+
+See **Retiring a subagent** in [pe-develop](../skills/pe-develop/SKILL.md).
 
 ### `workflow.steps.stackDoctor`
 
@@ -177,6 +187,16 @@ The Stack Doctor is spawned on demand, not per stage: when a Developer returns a
 Declaring nothing here still works: with no `model`, it inherits the session like any other step. The step exists so a repository *can* tier it, since diagnosing a stack is mechanical work that rarely needs the model doing the authorship.
 
 `skills` here applies to diagnosis, not to code — a repository's own runtime and orchestration conventions belong on this step, and are how a Doctor learns a stack whose failure modes are not self-evident from the `runtime` block. Coding standards do not belong here.
+
+### `workflow.steps.research`
+
+The Researcher is spawned on demand, not per stage: when the Planner or Reviewer returns `researchRequests` per [research-contract.md](./research-contract.md), the orchestrator launches one per question, concurrently, on this step's model. It is read-only outside its own notes file, never reads the plan, and cannot spawn anything.
+
+**Why this is a step rather than each agent researching for itself.** An agent that investigates an upstream dependency inside its own context pays for every dead end for the rest of its life, and an agent that delegates without a sanctioned target reaches for a general-purpose agent — which runs with no configured model, no resolved skills, and no ceiling, and which can spawn further agents whose cost lands out of sight. Naming the step makes the cheap path the sanctioned one.
+
+`skills` here applies to how the repository expects external claims to be sourced and cited — a documentation tool it standardizes on, an internal mirror, a rule about which sources count. Coding standards do not belong here.
+
+**No `contextBudget`.** A Researcher answers one question and returns, so there is no handoff record to retire it against; its bound is the forty-turn ceiling in the agent itself.
 
 ### `runtime`
 Read only when `developmentStrategy` is `parallel`. Omit it when the repository needs no isolation.
@@ -222,6 +242,8 @@ Every bump adds a row below, naming each key involved. That list is the only inp
 | 2 | Added `workflow.gates.channel`, `workflow.continuation` (`trigger`, `approveToken`, `reviseToken`, `claimLabel`, `claimTimeoutMinutes`, `maxTriggers`), and `git.pr.planTitlePattern`. Added `pr-comment` to `workflow.escalation.unattended`. All additive with defaults; a version 1 config runs unchanged on defaults. |
 | 3 | Added `workflow.developmentStrategy`, the `runtime` block, `applications[].dependsOn`, and `workflow.steps.<step>.model`. The first three are additive: a version 2 config runs unchanged on `sequential`, which is the pre-existing behavior. `model` is a policy choice with nothing to detect, so `/pe-setup` asks for it per step rather than adopting a default; it defaults to `inherit`, and a step with no `model` is unconfigured — which is what prompts the question. |
 | 4 | Added `workflow.steps.stackDoctor` and `workflow.steps.<step>.contextBudget`. Both additive with defaults: a version 3 config gets an inheriting Stack Doctor and the default `120000` budget on `implement` and `review`, which changes how those stages are dispatched but not what they produce. `/pe-setup` asks for a `stackDoctor` model on its existing rule for any step whose `model` is unset, and adopts the budget default without asking — it is a cost policy with a working default, not a repository fact. |
+| 5 | Added `workflow.steps.research`. Additive with a default: a version 4 config gets an inheriting Researcher. Also documents the per-step safe handoff points for `contextBudget`, which corrects a version 4 config that set one on `review` expecting it to bind within a single pass — the value is unchanged, what it bounds is now stated. |
+
 
 ## Extending the schema
 

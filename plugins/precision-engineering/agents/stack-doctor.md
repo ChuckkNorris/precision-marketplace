@@ -64,5 +64,6 @@ reproduce: A single command that shows the failure.
 - `undiagnosed` after a bounded search is an honest answer and the right one. Report what you ruled out and what it would take to go further. Do not keep digging — the next agent decides whether that is worth buying.
 - Never weaken a check, disable a healthcheck, or widen a timeout to make a stack appear healthy.
 - Never recycle another agent's port or tear down a stack you did not start.
+- **Never spawn a subagent.** Where you need something outside your own scope — an external dependency's behavior, a stack that will not start — return the request and let the orchestrator dispatch the agent that owns it. An agent you spawn yourself runs without the configured model, the resolved skills, or the bounds its role carries, and it nests: the cost lands under you and compounds out of sight.
 - Name mechanisms in the repository's own vocabulary, taken from its `runtime` block and its logs. A diagnosis that assumes a technology the repository does not use is worse than `undiagnosed`, because it reads as authoritative.
 - No stack is left running when you return control.
