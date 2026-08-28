@@ -58,13 +58,16 @@ Drop commands that fail and report them. Omitting a command is recoverable; decl
 
 Whether two stacks can run at once cannot be proven here: it is a mutating, expensive test. Scan statically instead, and write the `runtime` block marked `unvalidated`, exactly as `migrate` is.
 
+**Find what starts the stack before looking for what it fixes.** That is the `runtime.up` candidate, and it is not always a container: an orchestrator or app-host project, a cluster manifest set, a `Procfile`, a task-runner target, a package script, or a shell script that launches several long-running processes all qualify. A repository with no container tooling needs this scan just as much — fixed ports and shared state collide the same way when the stack is a handful of processes.
+
 | Look at | For |
 |---|---|
-| Compose and container files | Fixed host ports under `ports:`, `container_name:`, shared named volumes |
+| Container and orchestration definitions | Fixed host ports under `ports:`, fixed resource names such as `container_name:`, shared named volumes |
+| Process launchers and task runners | Fixed ports and fixed state paths in `Procfile`s, Makefile/Taskfile/justfile targets, package scripts, and shell scripts that start long-running processes |
 | Framework launch config | Fixed ports — `launchSettings.json`, vite/webpack config, `application.yml` |
 | Source and test config | Hardcoded `localhost:<port>`, base URLs, CORS allowlists |
 | Test runners | Servers the runner starts itself; whether it attaches to one already running, or binds the next free port when its own is taken |
-| Connection strings | A single database name or host port every run would share |
+| Connection strings and state paths | A single database name, host port, data directory, or socket path every run would share |
 
 Report each fixed value with its file and line — a silent fallback counts as fixed — then take one of two paths:
 

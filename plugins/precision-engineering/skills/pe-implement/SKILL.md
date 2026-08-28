@@ -41,6 +41,28 @@ Where `runtime.up` is declared, every command needing a live application — a t
 
 **Tear down on every exit path** — the last task, a task left `[~]`, an escalation, a gate you cannot get green. Bring the stack back up if you are continued into a later wave. A stack left running holds its ports against the next run; the orchestrator's sweep is a backstop for an agent that died, not a substitute for this.
 
+### Delegating a stack failure
+
+When the stack will not start, will not stay up, or will not serve, **you get ten turns to diagnose it and then you hand it off.** Past that, stop and return a stack-diagnosis request; the orchestrator spawns a Stack Doctor and continues you with its verdict.
+
+This is a budget, not a suggestion. Log archaeology is unbounded work at your most expensive context, and the Doctor does it at a fraction of the cost because it carries no plan, no recon, and no implementation history. Ten turns is enough for the causes worth catching yourself — an occupied port, a `migrate` you have not run yet, an environment variable you misspelled.
+
+Return, alongside your normal output:
+
+```yaml
+stackDiagnosis:
+  app: companysample-api
+  command: The exact command that failed, as you ran it.
+  failure: |
+    Its output, last 20 lines. Not the whole log.
+  ruledOut: [what you already checked]
+  blocks: [T-007]
+```
+
+Leave the blocking task `[~]`, tear the stack down, and stop. A `code-defect` verdict comes back for you to fix; an `environment` verdict is the user's machine and the orchestrator's to raise.
+
+**A stack failure is not an escalation** — it has a mechanical cause, not a decision to make, so it never reaches the user as a question. Escalate only when the *plan* is what the stack proved wrong.
+
 ## Exit gate
 
 Green `build`, `test`, `lint`, and `typecheck` for every in-scope application using the configured commands, and coverage at or above the effective `coverageMin`. Return each command, its result, and **the short SHA of the commit it ran against** — the last commit the gate covers — for the orchestrator to record in the `overview.md` verification table. Review reads that table instead of re-running the commands, so a row without its commit, or behind `HEAD`, comes straight back to you.
@@ -56,6 +78,7 @@ Green `build`, `test`, `lint`, and `typecheck` for every in-scope application us
 - Every comment explains *why* — the rationale, the constraint, the rejected alternative. The code already states what it does, so a comment restating that is noise that goes stale. Keep each under 200 characters; a reason needing more than that belongs in the name, the structure, or the task's **Notes**.
 - Never commit secrets, credentials, or artifacts the repository ignores.
 - No stack is left running when you return control.
+- Ten turns is the hard ceiling on diagnosing a stack yourself. Hand it to the Stack Doctor rather than paying your context to read logs.
 - Blocked mid-task? Leave the marker `[~]` and report the reason as a blocker. The orchestrator records it in `overview.md` and sets status.
 
 ## Escalation

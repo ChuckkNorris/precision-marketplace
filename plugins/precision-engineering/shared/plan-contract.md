@@ -29,15 +29,15 @@ Under `workflow.developmentStrategy: parallel` with `runtime.isolation: assigned
 
 ```markdown
 ## Port allocations
-| Slot | Holder | Project | API_PORT | PG_PORT |
+| Slot | Holder | Prefix | API_PORT | PG_PORT |
 |---|---|---|---|---|
 | 1 | developer:companysample-api | pe-aut-11-1 | 5293 | 5532 |
 | 2 | reviewer | pe-aut-11-2 | 5393 | 5632 |
 ```
 
-One column per entry in `runtime.ports`, plus the project name isolating that slot's containers and volumes. A slot is held for the life of the run and **never recycled**.
+One column per entry in `runtime.ports`, plus the prefix that keeps that slot's runtime resources — whatever `runtime.up` names and creates — distinct from every other slot's. That prefix is what the orchestrator's sweep matches on. A slot is held for the life of the run and **never recycled**.
 
-**A resume never reallocates.** Stage 0 rewrites the rest of `run-context.md` on every invocation; this section is carried forward unchanged instead, or the resumed run strands the containers the first one left holding those ports.
+**A resume never reallocates.** Stage 0 rewrites the rest of `run-context.md` on every invocation; this section is carried forward unchanged instead, or the resumed run strands whatever the first one left holding those ports.
 
 ## Task status markers
 
