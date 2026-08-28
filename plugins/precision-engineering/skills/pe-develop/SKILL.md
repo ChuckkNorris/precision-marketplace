@@ -32,8 +32,8 @@ Every change runs every stage. There is no abbreviated path — a change too sma
 2. **Locate the run.** Look for a plan directory under `docs/plans/` whose `overview.md` records the current branch — given a pull request reference, check out its branch first.
 3. **No plan directory — a new run.** Normalize the argument into a brief per [ticket-ingestion.md](../../shared/ticket-ingestion.md); derive `<feature-slug>`, create `docs/plans/<feature-slug>/`, and write `brief.md`; determine applications in scope, asking per [escalation.md](../../shared/escalation.md) when ambiguous, since a wrong scope wastes the entire pipeline; then seed `overview.md` — requirement, in and out of scope, apps in scope, status `planning`. The Planner fills in design, risks, and rollback.
 4. **A plan directory — a resume.** Take applications in scope from `overview.md`'s **Apps in scope**. Never re-derive it: the plan was built against that scope, and a fresh judgment that disagrees with it invalidates the plan.
-5. Resolve skills per the schema's resolution rules, read each step's `model` from `workflow.steps`, then write `run-context.md` per [plan-contract.md](../../shared/plan-contract.md) — resolved config, scope, and each application's skill list, in one file. Pass every subagent that file's path and its own application name; **subagents read `run-context.md`, never the config file.** One file written once carries the same no-drift guarantee as restating it in every prompt, at a fraction of the handoff cost. On a resume, carry any existing `## Port allocations` section forward unchanged — this step rewrites the rest of the file, and reallocating strands the containers still holding the old ports. A model is not context you pass — it is applied when you launch the subagent, per **Subagent dispatch**.
-6. **Preflight, then start the installs.** Run every `runtime.preflight` command first and report any failure before going further — a missing tool or a stopped container daemon fails every Developer at stage 5 instead of here. Then, under `sequential`, run each in-scope application's `commands.install` in the background: they are among the slowest commands in the run and nothing before stage 5 needs them, so an install still running when a Developer starts is pure delay. Report a failure; never hold stage 2 waiting on one. Under `parallel`, skip the installs — each worktree installs its own dependencies, so a warm install in the main checkout is work thrown away.
+5. Resolve skills per the schema's resolution rules, read each step's `model` from `workflow.steps`, then write `run-context.md` per [plan-contract.md](../../shared/plan-contract.md) — resolved config, scope, and each application's skill list, in one file. Pass every subagent that file's path and its own application name; **subagents read `run-context.md`, never the config file.** One file written once carries the same no-drift guarantee as restating it in every prompt, at a fraction of the handoff cost. On a resume, carry any existing `## Port allocations` section forward unchanged — this step rewrites the rest of the file, and reallocating strands whatever is still holding the old ports. A model is not context you pass — it is applied when you launch the subagent, per **Subagent dispatch**.
+6. **Preflight, then start the installs.** Run every `runtime.preflight` command first and report any failure before going further — a tool that is absent or not responding fails every Developer at stage 5 instead of here. Then, under `sequential`, run each in-scope application's `commands.install` in the background: they are among the slowest commands in the run and nothing before stage 5 needs them, so an install still running when a Developer starts is pure delay. Report a failure; never hold stage 2 waiting on one. Under `parallel`, skip the installs — each worktree installs its own dependencies, so a warm install in the main checkout is work thrown away.
 
 **Steps 1, 2, 5, and 6 run on every invocation.** A resumed run needs config, scope, skills, dispatch settings, and warm installs exactly as a new one does — subagents never re-read config, so a resume that skips this stage reaches Implement with no commands and no standards.
 
@@ -84,7 +84,7 @@ Then apply `workflow.gates.plan` per **Gate resolution**. The artifact is the pl
 | `contract:` | Needs only an interface already fixed under **Interface contract** | Not a barrier. Both sides run concurrently. |
 | `runtime:` | Needs the other application's code built, running, or seeding data | A barrier. The dependent task waits. |
 
-Cut the schedule into waves: a task joins the current wave when every unmet dependency it carries is `contract:`. Run one Developer per application per wave, all concurrently, each given only that wave's task IDs. An application with tasks in later waves gets its Developer **continued**, not respawned — its context is the point.
+Cut the schedule into waves: a task joins the current wave when every unmet dependency it carries is `contract:`. Run one Developer per application per wave, all concurrently, each given only that wave's task IDs. An application with tasks in later waves gets its Developer **continued while it is under its `contextBudget`**, and a fresh one once it is past it — see **Retiring a subagent**.
 
 **Under `sequential`**, run one Developer at a time in wave order. Nothing is allocated; the repository runs on its default ports.
 
@@ -99,9 +99,34 @@ Give each Developer its own worktree plus its slot's environment, with `{port:<n
 
 Where the harness cannot provide a worktree, `parallel` is unavailable: run `sequential` instead and report why.
 
-Sweep anything carrying this run's prefix — stacks, worktrees, and slot branches — at the start of this stage and again at stage 7. A Developer that died mid-wave cleaned up nothing: its containers still hold its ports and its worktree still holds its branch. This sweep is the only cleanup that survives a dead subagent.
+Sweep anything carrying this run's prefix — stacks, worktrees, and slot branches — at the start of this stage and again at stage 7. A Developer that died mid-wave cleaned up nothing: whatever `runtime.up` started still holds its ports, and its worktree still holds its branch. This sweep is the only cleanup that survives a dead subagent.
 
 A `runtime:` edge the plan tagged `contract:` breaks the build. Stop the affected Developers, re-run that wave sequentially, and report it — it is a plan defect, not a scheduling one.
+
+**A returned `stackDiagnosis` is yours to route, not to solve.** Spawn a Stack Doctor on the `stackDoctor` step's model, give it the failing command, its output, the application, `run-context.md`, and that Developer's assigned environment — never the plan or the recon. Then act on its verdict:
+
+| Verdict | Do |
+|---|---|
+| `fixed-by` | Continue the Developer with the fix. |
+| `code-defect` | Continue the Developer with the diagnosis; the fix is its task. |
+| `environment` | The host is wrong, not the repository. Attended, tell the user and stop; unattended, record it under **Blockers** and set status `blocked`. |
+| `flake` | Continue the Developer and tell it to retry once. |
+| `undiagnosed` | Re-run that task sequentially with the defaults free, and report. A second `undiagnosed` on the same cause is a blocker, not a third attempt. |
+
+**Never debug the stack yourself.** You own sequencing, gates, git, and routing; a stack that will not start is none of those. Your context is the only one in the run that cannot be retired, so work you absorb is charged for the rest of the run — and reading logs is exactly the work the Stack Doctor exists to keep out of an expensive context. The same applies at stage 6.
+
+### Retiring a subagent
+
+`workflow.steps.<step>.contextBudget` bounds how large a Developer or Reviewer is allowed to get. Once a subagent's context passes its budget, **retire it at the next safe handoff point and spawn a fresh one for the remaining work.**
+
+A handoff point is safe when the plan directory is a complete record of where the work stands: the task is `[x]`, its `Verify` passed, and it is committed with its SHA in the checklist. Mid-task is never safe — the successor would inherit a `[~]` marker and an uncommitted tree. Wave boundaries and remediation hand-offs are always safe, because they already are that.
+
+Give the successor what a resume gets — `run-context.md`, its application's plan and recon, and the remaining task IDs — and nothing of the predecessor's transcript. The checklist, the per-task **Notes**, and the commits are authoritative over any agent's recollection; that is what the markers are for.
+
+Two constraints:
+
+- **`git.commitGranularity: squashed` disables this.** With nothing committed, retiring a subagent discards its work. Carry the subagent through the stage and note that the budget was unenforceable.
+- **A budget is a ceiling, not a target.** Never retire a subagent that is under budget to make the schedule look tidier; the re-read is real cost, and a stage that fragments into agents spending their first turns orienting is worse than one long agent.
 
 Set status `in-progress` when the stage starts, and record each Developer's returned exit-gate rows in the `overview.md` verification table as it finishes — concurrent Developers return their results rather than writing that file. Apply `workflow.gates.implementation` per **Gate resolution** before stage 6.
 
@@ -146,6 +171,7 @@ Each stage's subagent runs on the `model` declared for that stage's step in `wor
 | `plan` | 3 | Planner |
 | `implement` | 5 | Developer |
 | `review` | 6 | Reviewer |
+| `stackDoctor` | 5, 6 | Stack Doctor — on demand, not per stage |
 
 Set a model on the launch **only where the config declares one**. A step with no `model` defaults to `inherit` — inherit the current session. Pass `inherit` where the launch accepts it, and omit the launch's model parameter where it does not; either way the subagent stays on your own session's model. Never infer a model from a role: no step has one until a repository names it. Pass a declared value as written rather than composing one — the values a subagent launch accepts are not always those your own session offers.
 
@@ -181,12 +207,16 @@ Full contract, including the payload shape and when a subagent should escalate a
 
 ## Follow-up routing
 
-Route every follow-up to the subagent that owns the artifact, continuing the existing agent so its context is reused. Spawn fresh only when no prior agent exists for that artifact.
+Route every follow-up to the subagent that owns the artifact. **Continue the existing agent only where its accumulated context is what makes the answer correct** — a Planner revising a design it reasoned through, or a Reviewer re-judging a remediation against the branch it already read. Everywhere else, spawn fresh against the plan directory.
+
+A Developer past its `contextBudget` is retired, not continued. A finished implementation's context is not what makes a follow-up correct — the plan, the checklist with its SHAs, the per-task **Notes**, and the findings file are, and they are on disk. Continuing one to fix a typo or edit a document charges the whole implementation history against a one-file change.
 
 | Request concerns | Route to |
 |---|---|
 | Plan content, scope, task breakdown | Planner |
-| Implementation, defects, fixing review findings, docs, naming, readability | Developer |
+| Implementation, defects, fixing review findings | Developer — fresh, unless mid-stage and under budget |
+| Docs, naming, readability, any single-file change | Developer — always fresh |
+| A runtime stack that will not start, stay up, or serve | Stack Doctor |
 | Review verdict, disputed findings | Reviewer |
 | Current-state questions about the codebase | Explorer |
 | Branch, commits, PR | orchestrator |
@@ -200,6 +230,8 @@ When the owning agent's context is gone, re-hydrate a fresh instance from the pl
 - After the plan gate, **only you write `overview.md`** — status, verification rows, blockers, and gates. Subagents return those facts; you record them. Transcribing what a subagent returns is run state, which you own, not the subagent's work.
 - The exit gate runs once, in stage 5, and is confirmed by commit SHA thereafter. A stale row is re-run by the Reviewer, never by you. A stage that re-runs it is paying the run's slowest commands for an answer the verification table already holds.
 - Gates are the only pause points. Never invent one, never skip one.
+- Never diagnose a runtime stack, in any stage — whatever `runtime.up` starts, and however familiar its technology looks. It routes to the Stack Doctor, whose whole purpose is to keep that work out of a context that cannot be retired.
+- Every subagent you spawn is one of the five named in **Subagent dispatch**. A general-purpose agent doing a stage's work is that stage's subagent without its constraints, its skills, or its configured model.
 - Every gate resolution is recorded in `## Gates` with who resolved it and the signal. An unrecorded approval cannot be audited and will be re-asked on the next resume.
 - Every stage runs on every change. Never skip Explore or Plan because a change looks small.
 - Never advance past a red gate, an unresolved blocker in `overview.md`, or a task still marked `[~]`.

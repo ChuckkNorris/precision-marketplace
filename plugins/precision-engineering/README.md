@@ -46,6 +46,10 @@ pe-develop <ticket|pr|description>
 
 **Cost is configured, not assumed.** Every stage runs on the model of the session that invoked it, unless `workflow.steps.<step>` names otherwise — a cheap model for reconnaissance, a stronger one where judgment is dense. The plugin pins nothing: a repository that wants a tier states it, and one that does not gets a pipeline that follows whatever the invoking session runs on. Explorers fan out per application, and Developers do too when their manifests do not overlap.
 
+**Long-lived subagents are retired, not carried.** A subagent's cost is the integral of its context over its turns, so context that accumulates all stage is charged again on every remaining turn. `workflow.steps.<step>.contextBudget` caps how large a Developer or Reviewer may get; past it, the orchestrator retires it at the next committed task and spawns a fresh one against the plan directory. The checklist SHAs and per-task notes are what make that handoff lossless — the same record a resume runs on.
+
+**Runtime stacks are diagnosed somewhere cheap.** A stack that will not start is mechanical work with an unbounded appetite for logs, and it used to happen inside whichever context was most expensive. The Stack Doctor takes it instead: read-and-run only, no plan, no recon, its own configurable model, and a written record in `stack-notes.md` so the second occurrence of a cause is answered rather than re-derived. Neither the Developer nor the orchestrator debugs a stack.
+
 **One configuration, both environments.** A gate set to `approve` means a human decides; *how* they are asked is detected at runtime. Attended — an interactive Claude Code or IDE session — the plan is presented in the conversation. Unattended — a cloud agent, routine, or CI job — it is committed and published as a draft pull request instead. Nothing in the config or the skills changes between the two.
 
 **Runs survive a process boundary.** An unattended gate stops with its artifacts committed. Review happens as PR comments; an approval token in a comment triggers the next invocation, which matches `overview.md` to the branch and resumes from the recorded status rather than starting over. Plan and implementation share one branch and one PR, which flips from draft to ready at stage 7. Feedback routes back to the Planner as a revision, never as a restart.
@@ -74,7 +78,7 @@ The plan is the approval artifact: what is being built, how it behaves, and wher
 
 ```
 .cursor-plugin/plugin.json    plugin manifest
-agents/                       explorer, planner, developer, reviewer
+agents/                       explorer, planner, developer, reviewer, stack-doctor
 skills/                       pe-develop, pe-setup, pe-explore, pe-plan, pe-implement,
                               pe-review, clean-modular-code, dotnet-api-standards,
                               update-ai-instructions

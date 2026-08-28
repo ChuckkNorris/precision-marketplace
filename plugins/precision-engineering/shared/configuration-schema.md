@@ -17,7 +17,7 @@ Unknown keys are preserved, never discarded — the config is extensible by desi
 ## Schema
 
 ```yaml
-version: 3                          # required; schema version — see Versioning
+version: 4                          # required; schema version — see Versioning
 
 repository:
   strategy: monorepo                # monorepo | polyrepo
@@ -39,10 +39,11 @@ workflow:
     claimTimeoutMinutes: 60         # a claim older than this is treated as abandoned
     maxTriggers: 10                 # resolutions allowed on one plan directory
   steps:                            # per-step mandatory skills (see resolution rules)
-    explore:   { skills: [], model: "" }  # unset model = inherit, and /pe-setup asks for one
-    plan:      { skills: [], model: "" }
-    implement: { skills: [], model: "" }
-    review:    { skills: [], model: "" }  # standards the Reviewer judges the diff against
+    explore:     { skills: [], model: "" }  # unset model = inherit, and /pe-setup asks for one
+    plan:        { skills: [], model: "" }
+    implement:   { skills: [], model: "", contextBudget: 120000 }
+    review:      { skills: [], model: "", contextBudget: 120000 }
+    stackDoctor: { skills: [], model: "" }  # diagnoses runtime-stack failures; disposable
   quality:
     coverageMin: 80                 # null disables the check
     blockOnLintError: true
@@ -159,6 +160,24 @@ Runs that step's subagent on a named model instead of the session's own. Default
 
 An opaque string the workflow never parses: it reaches the harness unchanged, so write the value that harness's subagent launch accepts. An unrecognized value is the harness's error to raise, not the workflow's to validate.
 
+### `workflow.steps.<step>.contextBudget`
+
+Tokens of context after which that step's subagent is retired and its successor spawned fresh, at the next safe handoff point. Read only for the long-lived steps, `implement` and `review`; inert elsewhere, since the other steps return before any budget could bind. `null` disables the check and restores the pre-version-4 behavior of one subagent for the whole stage.
+
+**Why a budget rather than a task count.** A subagent's cost is the integral of its context over its turns, so a context that grows all stage is charged again on every remaining turn. Capping the peak collects nearly all of the saving; how many tasks fit under the cap is incidental, and a task counter cannot bound a single task that turns out to be long.
+
+Default `120000`. Below roughly `60000` the re-read at each handoff starts to cost more than the accumulation it avoids, and the run fragments into agents that spend their first turns orienting.
+
+**A budget is not a hard stop.** It authorizes the orchestrator to retire the subagent at the next point the plan directory is a complete handoff record — a task marked `[x]` and committed. See **Retiring a subagent** in [pe-develop](../skills/pe-develop/SKILL.md).
+
+### `workflow.steps.stackDoctor`
+
+The Stack Doctor is spawned on demand, not per stage: when a Developer returns a `stackDiagnosis` request, the orchestrator launches one on this step's model. It is read-and-run only and never edits a tracked file, so it is the cheapest place in the pipeline to put a failure in whatever `runtime.up` starts — and the natural place to name a cheaper model than `implement`.
+
+Declaring nothing here still works: with no `model`, it inherits the session like any other step. The step exists so a repository *can* tier it, since diagnosing a stack is mechanical work that rarely needs the model doing the authorship.
+
+`skills` here applies to diagnosis, not to code — a repository's own runtime and orchestration conventions belong on this step, and are how a Doctor learns a stack whose failure modes are not self-evident from the `runtime` block. Coding standards do not belong here.
+
 ### `runtime`
 Read only when `developmentStrategy` is `parallel`. Omit it when the repository needs no isolation.
 
@@ -166,7 +185,7 @@ Read only when `developmentStrategy` is `parallel`. Omit it when the repository 
 |---|---|
 | `isolation` | `assigned` — the workflow allocates ports and injects them. `built-in` — the stack isolates itself (Aspire, testcontainers, dev containers); nothing is allocated and only the worktree separates runs. |
 | `portBlockSize` | Slot N gets `default + N × portBlockSize` for every port. Size it so no computed port can land on another port's default. |
-| `ports` | Only ports crossing the host boundary. Container-to-container addresses never vary and are not listed. |
+| `ports` | Only ports crossing the host boundary. Addresses used purely between the stack's own components never vary and are not listed. |
 | `env` | Values every stack needs beyond the ports themselves, injected alongside them. `{port:<name>}` is substituted with that port's assigned value — for a setting like a connection string that cannot be overridden one field at a time. |
 | `up` / `down` | Bring the stack up and tear it down. Omit both and no lifecycle runs; commands are simply given the injected environment. |
 | `preflight` | Tool-availability checks. Run under **both** strategies, before any stage does work. |
@@ -202,6 +221,7 @@ Every bump adds a row below, naming each key involved. That list is the only inp
 | 1 | Initial schema. |
 | 2 | Added `workflow.gates.channel`, `workflow.continuation` (`trigger`, `approveToken`, `reviseToken`, `claimLabel`, `claimTimeoutMinutes`, `maxTriggers`), and `git.pr.planTitlePattern`. Added `pr-comment` to `workflow.escalation.unattended`. All additive with defaults; a version 1 config runs unchanged on defaults. |
 | 3 | Added `workflow.developmentStrategy`, the `runtime` block, `applications[].dependsOn`, and `workflow.steps.<step>.model`. The first three are additive: a version 2 config runs unchanged on `sequential`, which is the pre-existing behavior. `model` is a policy choice with nothing to detect, so `/pe-setup` asks for it per step rather than adopting a default; it defaults to `inherit`, and a step with no `model` is unconfigured — which is what prompts the question. |
+| 4 | Added `workflow.steps.stackDoctor` and `workflow.steps.<step>.contextBudget`. Both additive with defaults: a version 3 config gets an inheriting Stack Doctor and the default `120000` budget on `implement` and `review`, which changes how those stages are dispatched but not what they produce. `/pe-setup` asks for a `stackDoctor` model on its existing rule for any step whose `model` is unset, and adopts the budget default without asking — it is a cost policy with a working default, not a repository fact. |
 
 ## Extending the schema
 
