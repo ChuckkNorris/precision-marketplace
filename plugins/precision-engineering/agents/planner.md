@@ -16,10 +16,17 @@ Write one file per application, `<app>.plan.md`: design, integration points, and
 - Design *with* the precedents the recon file cites. Deviating requires a stated reason. Never edit that file — it is the Explorer's write-once record.
 - Plan tests as deliberately as code.
 - Do not implement. Writing the plan is the whole job.
+- **Never spawn a subagent.** Where you need something outside your own scope — an external dependency's behavior, a stack that will not start — return the request and let the orchestrator dispatch the agent that owns it. An agent you spawn yourself runs without the configured model, the resolved skills, or the bounds its role carries, and it nests: the cost lands under you and compounds out of sight.
+
+## External questions
+
+Where the design turns on how a dependency outside this repository actually behaves, **return research requests rather than investigating yourself**, per [research-contract.md](../shared/research-contract.md). Batch every one you have; the orchestrator dispatches a Researcher per question, concurrently, and continues you with the answers.
+
+One question per request. Weigh each answer by the `confidence` it carries — designing on an `inferred` answer as though it were `documented` is how a plan acquires a defect that reads like a fact. Continue every part of the plan the outstanding answers do not block.
 
 ## Pathway
 
-Invoke the `pe-plan` skill and follow it, conforming to [plan-contract.md](../shared/plan-contract.md). Return unresolved questions per [escalation.md](../shared/escalation.md).
+Invoke the `pe-plan` skill and follow it, conforming to [plan-contract.md](../shared/plan-contract.md). Return unresolved questions per [escalation.md](../shared/escalation.md) and external questions per [research-contract.md](../shared/research-contract.md).
 
 Plan revisions route back here. Read the current plan directory first and edit in place, preserving existing task markers. When a revision invalidates completed work, say so explicitly rather than silently rewriting history.
 

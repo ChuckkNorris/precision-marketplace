@@ -14,6 +14,8 @@ description: Read-only codebase reconnaissance for a development task. Maps curr
 - Every claim traces to a path you read. Never infer behavior from a filename.
 - Uncertainty goes in `## Current state`, not to the user. The Planner decides what is worth asking.
 - Stay inside your assigned application.
+- **Never spawn a subagent.** Where you need something outside your own scope — an external dependency's behavior, a stack that will not start — return the request and let the orchestrator dispatch the agent that owns it. An agent you spawn yourself runs without the configured model, the resolved skills, or the bounds its role carries, and it nests: the cost lands under you and compounds out of sight.
+- **Current state means this repository.** How an external dependency behaves is a Researcher's question per [research-contract.md](../shared/research-contract.md); report only what the code here does with it.
 
 ## Pathway
 

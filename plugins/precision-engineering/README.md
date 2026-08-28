@@ -48,6 +48,8 @@ pe-develop <ticket|pr|description>
 
 **Long-lived subagents are retired, not carried.** A subagent's cost is the integral of its context over its turns, so context that accumulates all stage is charged again on every remaining turn. `workflow.steps.<step>.contextBudget` caps how large a Developer or Reviewer may get; past it, the orchestrator retires it at the next committed task and spawns a fresh one against the plan directory. The checklist SHAs and per-task notes are what make that handoff lossless — the same record a resume runs on.
 
+**External questions are answered somewhere cheap, once.** How a dependency behaves is not a design decision, and investigating it inside a Planner or Reviewer charges every dead end against the context that has to do the judging. The Planner and Reviewer return `researchRequests` instead; the orchestrator dispatches one Researcher per question, concurrently, each read-only, version-pinned, citing everything, and bounded at forty turns. Answers carry their confidence through unchanged — `inferred` never arrives looking like `documented`. **No subagent spawns another:** an agent that dispatches its own runs with no configured model, no resolved skills, and no ceiling, and its cost lands out of sight.
+
 **Runtime stacks are diagnosed somewhere cheap.** A stack that will not start is mechanical work with an unbounded appetite for logs, and it used to happen inside whichever context was most expensive. The Stack Doctor takes it instead: read-and-run only, no plan, no recon, its own configurable model, and a written record in `stack-notes.md` so the second occurrence of a cause is answered rather than re-derived. Neither the Developer nor the orchestrator debugs a stack.
 
 **One configuration, both environments.** A gate set to `approve` means a human decides; *how* they are asked is detected at runtime. Attended — an interactive Claude Code or IDE session — the plan is presented in the conversation. Unattended — a cloud agent, routine, or CI job — it is committed and published as a draft pull request instead. Nothing in the config or the skills changes between the two.
@@ -78,13 +80,12 @@ The plan is the approval artifact: what is being built, how it behaves, and wher
 
 ```
 .cursor-plugin/plugin.json    plugin manifest
-agents/                       explorer, planner, developer, reviewer, stack-doctor
+agents/                       explorer, planner, developer, reviewer, stack-doctor, researcher
 skills/                       pe-develop, pe-setup, pe-explore, pe-plan, pe-implement,
-                              pe-review, clean-modular-code, dotnet-api-standards,
-                              update-ai-instructions
+                              pe-review, clean-modular-code, update-ai-instructions
 shared/                       contracts referenced by more than one skill or agent:
                               configuration schema, plan contract, escalation,
-                              ticket ingestion, PR feedback
+                              research contract, ticket ingestion, PR feedback
 ```
 
 **Agents** carry the role — goal, constraints, and which procedure to run. **Skills** carry the procedure — inputs, method, output format, guardrails. Splitting them keeps each stage reusable outside the pipeline and keeps agent context lean.

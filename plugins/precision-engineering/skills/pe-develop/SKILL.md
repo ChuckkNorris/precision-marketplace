@@ -69,6 +69,8 @@ One Planner covering all in-scope applications, so cross-application design stay
 
 Each application gets one plan file, `<app>.plan.md` — design, integration points, and tasks. It is the whole gate artifact: reconnaissance stays in `<app>.recon.md`, and the Developer decides low-level mechanics itself at stage 5.
 
+**Returned `researchRequests` are yours to dispatch** per [research-contract.md](../../shared/research-contract.md) — one Researcher per question, all concurrently, on the `research` step's model. Never one Researcher carrying several questions, and never a general-purpose agent. Continue the Planner with the answers, `confidence` and citations intact. The same applies at stage 6, where a Reviewer's provisional finding turns on an external claim.
+
 ### 4 - Plan gate
 
 **Resolve escalations first.** If the Planner returned questions, ask them per [escalation.md](../../shared/escalation.md), record the answers in `overview.md`, and route back to the Planner to revise the plan before presenting it. A plan with unresolved questions is not ready for approval, whatever the gate setting.
@@ -119,7 +121,14 @@ A `runtime:` edge the plan tagged `contract:` breaks the build. Stop the affecte
 
 `workflow.steps.<step>.contextBudget` bounds how large a Developer or Reviewer is allowed to get. Once a subagent's context passes its budget, **retire it at the next safe handoff point and spawn a fresh one for the remaining work.**
 
-A handoff point is safe when the plan directory is a complete record of where the work stands: the task is `[x]`, its `Verify` passed, and it is committed with its SHA in the checklist. Mid-task is never safe — the successor would inherit a `[~]` marker and an uncommitted tree. Wave boundaries and remediation hand-offs are always safe, because they already are that.
+A handoff point is safe when the plan directory is a complete record of where the work stands, and each step has its own:
+
+| Step | Safe handoff point |
+|---|---|
+| `implement` | A task marked `[x]`, its `Verify` passed, committed with its SHA in the checklist. Mid-task is never safe — the successor inherits a `[~]` marker and an uncommitted tree. Wave boundaries and remediation hand-offs already are this. |
+| `review` | Between remediation cycles, once the findings files are written. A single pass has no interior handoff point: its verdict depends on having read every application, so there is nothing to hand over part-way. |
+
+**A Reviewer over budget on its first pass is not retired.** Report that the diff is too large for one reviewer and let it finish — splitting the one judgment that spans every application costs more than the context does. Retire it between cycles instead, where the findings files are the record.
 
 Give the successor what a resume gets — `run-context.md`, its application's plan and recon, and the remaining task IDs — and nothing of the predecessor's transcript. The checklist, the per-task **Notes**, and the commits are authoritative over any agent's recollection; that is what the markers are for.
 
@@ -172,6 +181,7 @@ Each stage's subagent runs on the `model` declared for that stage's step in `wor
 | `implement` | 5 | Developer |
 | `review` | 6 | Reviewer |
 | `stackDoctor` | 5, 6 | Stack Doctor — on demand, not per stage |
+| `research` | 3, 6 | Researcher — on demand, one per question |
 
 Set a model on the launch **only where the config declares one**. A step with no `model` defaults to `inherit` — inherit the current session. Pass `inherit` where the launch accepts it, and omit the launch's model parameter where it does not; either way the subagent stays on your own session's model. Never infer a model from a role: no step has one until a repository names it. Pass a declared value as written rather than composing one — the values a subagent launch accepts are not always those your own session offers.
 
@@ -217,6 +227,7 @@ A Developer past its `contextBudget` is retired, not continued. A finished imple
 | Implementation, defects, fixing review findings | Developer — fresh, unless mid-stage and under budget |
 | Docs, naming, readability, any single-file change | Developer — always fresh |
 | A runtime stack that will not start, stay up, or serve | Stack Doctor |
+| How an external dependency behaves | Researcher — one per question, fresh |
 | Review verdict, disputed findings | Reviewer |
 | Current-state questions about the codebase | Explorer |
 | Branch, commits, PR | orchestrator |
@@ -231,7 +242,8 @@ When the owning agent's context is gone, re-hydrate a fresh instance from the pl
 - The exit gate runs once, in stage 5, and is confirmed by commit SHA thereafter. A stale row is re-run by the Reviewer, never by you. A stage that re-runs it is paying the run's slowest commands for an answer the verification table already holds.
 - Gates are the only pause points. Never invent one, never skip one.
 - Never diagnose a runtime stack, in any stage — whatever `runtime.up` starts, and however familiar its technology looks. It routes to the Stack Doctor, whose whole purpose is to keep that work out of a context that cannot be retired.
-- Every subagent you spawn is one of the five named in **Subagent dispatch**. A general-purpose agent doing a stage's work is that stage's subagent without its constraints, its skills, or its configured model.
+- Every subagent you spawn is one of the six named in **Subagent dispatch**, and no subagent spawns another. A general-purpose agent doing a stage's work is that stage's subagent without its constraints, its skills, or its configured model — and a subagent that spawns its own runs unbounded, with the cost landing under it rather than in your accounting.
+- An external-dependency question routes to a Researcher, one per question. Never answer it yourself, and never let the agent that asked go and investigate it.
 - Every gate resolution is recorded in `## Gates` with who resolved it and the signal. An unrecorded approval cannot be audited and will be re-asked on the next resume.
 - Every stage runs on every change. Never skip Explore or Plan because a change looks small.
 - Never advance past a red gate, an unresolved blocker in `overview.md`, or a task still marked `[~]`.
