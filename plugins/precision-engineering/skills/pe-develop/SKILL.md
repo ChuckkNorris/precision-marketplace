@@ -32,7 +32,7 @@ Every change runs every stage. There is no abbreviated path — a change too sma
 2. **Locate the run.** Look for a plan directory under `docs/plans/` whose `overview.md` records the current branch — given a pull request reference, check out its branch first.
 3. **No plan directory — a new run.** Normalize the argument into a brief per [ticket-ingestion.md](../../shared/ticket-ingestion.md); derive `<feature-slug>`, create `docs/plans/<feature-slug>/`, and write `brief.md`; determine applications in scope, asking per [escalation.md](../../shared/escalation.md) when ambiguous, since a wrong scope wastes the entire pipeline; then seed `overview.md` — requirement, in and out of scope, apps in scope, status `planning`. The Planner fills in design, risks, and rollback.
 4. **A plan directory — a resume.** Take applications in scope from `overview.md`'s **Apps in scope**. Never re-derive it: the plan was built against that scope, and a fresh judgment that disagrees with it invalidates the plan.
-5. Resolve skills per the schema's resolution rules, read each step's `model` from `workflow.steps`, then write `run-context.md` per [plan-contract.md](../../shared/plan-contract.md) — resolved config, scope, and each application's skill list, in one file. Pass every subagent that file's path and its own application name; **subagents read `run-context.md`, never the config file.** One file written once carries the same no-drift guarantee as restating it in every prompt, at a fraction of the handoff cost. On a resume, carry any existing `## Port allocations` section forward unchanged — this step rewrites the rest of the file, and reallocating strands whatever is still holding the old ports. A model is not context you pass — it is applied when you launch the subagent, per **Subagent dispatch**.
+5. Resolve skills per the schema's resolution rules, read each step's `model` and `contextBudget` from `workflow.steps`, then write `run-context.md` per [plan-contract.md](../../shared/plan-contract.md) — resolved config, scope, and each application's skill list, in one file. Pass every subagent that file's path and its own application name; **subagents read `run-context.md`, never the config file.** One file written once carries the same no-drift guarantee as restating it in every prompt, at a fraction of the handoff cost. On a resume, carry any existing `## Port allocations` section forward unchanged — this step rewrites the rest of the file, and reallocating strands whatever is still holding the old ports. A model is not context you pass — it is applied when you launch the subagent, per **Subagent dispatch**. A `contextBudget` is the opposite: it *is* context you pass, and a subagent that cannot read its budget cannot honor it, so a long-lived step's budget missing from this file silently disables the mechanism.
 6. **Preflight, then start the installs.** Run every `runtime.preflight` command first and report any failure before going further — a tool that is absent or not responding fails every Developer at stage 5 instead of here. Then, under `sequential`, run each in-scope application's `commands.install` in the background: they are among the slowest commands in the run and nothing before stage 5 needs them, so an install still running when a Developer starts is pure delay. Report a failure; never hold stage 2 waiting on one. Under `parallel`, skip the installs — each worktree installs its own dependencies, so a warm install in the main checkout is work thrown away.
 
 **Steps 1, 2, 5, and 6 run on every invocation.** A resumed run needs config, scope, skills, dispatch settings, and warm installs exactly as a new one does — subagents never re-read config, so a resume that skips this stage reaches Implement with no commands and no standards.
@@ -69,7 +69,15 @@ One Planner covering all in-scope applications, so cross-application design stay
 
 Each application gets one plan file, `<app>.plan.md` — design, integration points, and tasks. It is the whole gate artifact: reconnaissance stays in `<app>.recon.md`, and the Developer decides low-level mechanics itself at stage 5.
 
-**Returned `researchRequests` are yours to dispatch** per [research-contract.md](../../shared/research-contract.md) — one Researcher per question, all concurrently, on the `research` step's model. Never one Researcher carrying several questions, and never a general-purpose agent. Continue the Planner with the answers, `confidence` and citations intact. The same applies at stage 6, where a Reviewer's provisional finding turns on an external claim.
+**Returned `researchRequests` are yours to dispatch** per [research-contract.md](../../shared/research-contract.md) — one Researcher per question, all concurrently, on the `research` step's model. Never one Researcher carrying several questions, and never a general-purpose agent. The same applies at stage 6, where a Reviewer's provisional finding turns on an external claim.
+
+**Research rounds repeat, so do not carry one Planner through all of them.** What a design needs to know is discovered as the design develops: one round's answers raise the next round's questions, and a Planner continued through every round pays for its whole accumulated context on every turn of every later one. Instead:
+
+1. Have the Planner write what it has settled to the plan files before it returns its requests. That, plus `research-notes.md`, is the round's complete record.
+2. Dispatch the Researchers, and have each append its answer to `research-notes.md`.
+3. **Spawn a fresh Planner** for the next round once it is past the `plan` step's `contextBudget`, giving it the plan files and `research-notes.md` — never the predecessor's transcript. Under budget, continue the existing one; the re-read is real cost and a short round does not earn it.
+
+The accumulated reasoning is not what makes the next design step correct — the plan files and the cited answers are, and both are on disk.
 
 ### 4 - Plan gate
 
@@ -119,23 +127,32 @@ A `runtime:` edge the plan tagged `contract:` breaks the build. Stop the affecte
 
 ### Retiring a subagent
 
-`workflow.steps.<step>.contextBudget` bounds how large a Developer or Reviewer is allowed to get. Once a subagent's context passes its budget, **retire it at the next safe handoff point and spawn a fresh one for the remaining work.**
+`workflow.steps.<step>.contextBudget` bounds how large a Developer, Reviewer, or Planner is allowed to get. **The subagent enforces it, not you.** You cannot see a subagent's context while it works, and an agent that never returns is never retired — a budget you police from here binds only where you already have control, which is exactly where the runaway is not.
 
-A handoff point is safe when the plan directory is a complete record of where the work stands, and each step has its own:
+So pass the budget down in `run-context.md` and act on what comes back:
+
+| Returned | Do |
+|---|---|
+| `budgetReached` with tasks remaining | Spawn a fresh subagent for the remaining work. Record the handoff in `overview.md`. |
+| `budgetReached` with nothing remaining | Nothing. It finished; the report is informational. |
+| A normal return | Nothing. It came in under budget. |
+
+A successor gets what a resume gets — `run-context.md`, its application's plan and recon, the remaining task IDs — and **nothing of its predecessor's transcript**. The checklist, the per-task **Notes**, and the commits are authoritative over any agent's recollection; that is what the markers are for.
+
+Each step's safe handoff point is where its own artifact is complete, and each is defined in that step's procedure:
 
 | Step | Safe handoff point |
 |---|---|
-| `implement` | A task marked `[x]`, its `Verify` passed, committed with its SHA in the checklist. Mid-task is never safe — the successor inherits a `[~]` marker and an uncommitted tree. Wave boundaries and remediation hand-offs already are this. |
-| `review` | Between remediation cycles, once the findings files are written. A single pass has no interior handoff point: its verdict depends on having read every application, so there is nothing to hand over part-way. |
-
-**A Reviewer over budget on its first pass is not retired.** Report that the diff is too large for one reviewer and let it finish — splitting the one judgment that spans every application costs more than the context does. Retire it between cycles instead, where the findings files are the record.
-
-Give the successor what a resume gets — `run-context.md`, its application's plan and recon, and the remaining task IDs — and nothing of the predecessor's transcript. The checklist, the per-task **Notes**, and the commits are authoritative over any agent's recollection; that is what the markers are for.
+| `implement` | A task `[x]`, its `Verify` passed, committed with its SHA |
+| `review` | Between remediation cycles, once the findings files are written |
+| `plan` | The plan files and `research-notes.md` written — see **3 - Plan** |
 
 Two constraints:
 
-- **`git.commitGranularity: squashed` disables this.** With nothing committed, retiring a subagent discards its work. Carry the subagent through the stage and note that the budget was unenforceable.
-- **A budget is a ceiling, not a target.** Never retire a subagent that is under budget to make the schedule look tidier; the re-read is real cost, and a stage that fragments into agents spending their first turns orienting is worse than one long agent.
+- **`git.commitGranularity: squashed` disables this for `implement`.** With nothing committed, retiring a Developer discards its work. Note that the budget was unenforceable and carry it through the stage.
+- **A budget is a ceiling, not a target.** Never retire a subagent that reported no budget problem. The re-read is real cost, and a stage that fragments into agents spending their first turns orienting is worse than one long agent.
+
+**A subagent that runs far past its budget without reporting is a defect worth naming** in your report — the mechanism depends on the owner honoring it, so silence is the failure mode to watch for.
 
 Set status `in-progress` when the stage starts, and record each Developer's returned exit-gate rows in the `overview.md` verification table as it finishes — concurrent Developers return their results rather than writing that file. Apply `workflow.gates.implementation` per **Gate resolution** before stage 6.
 
@@ -238,6 +255,7 @@ When the owning agent's context is gone, re-hydrate a fresh instance from the pl
 
 - Config is read once, in stage 0, and passed down. Subagents that re-read it drift. Stage 0 runs its config, scope, skill, and dispatch resolution on a resume too — a step's `model` is applied when you launch its subagent, never passed as context for it to act on.
 - Every `model` a step declares launches with it applied, or the run stops with it named. A declared model in neither the launch nor the report was dropped.
+- A `contextBudget` is passed down and honored by the subagent that owns the context. You never police one from here — you cannot see it, and the agent that most needs retiring is the one that has not returned.
 - After the plan gate, **only you write `overview.md`** — status, verification rows, blockers, and gates. Subagents return those facts; you record them. Transcribing what a subagent returns is run state, which you own, not the subagent's work.
 - The exit gate runs once, in stage 5, and is confirmed by commit SHA thereafter. A stale row is re-run by the Reviewer, never by you. A stage that re-runs it is paying the run's slowest commands for an answer the verification table already holds.
 - Gates are the only pause points. Never invent one, never skip one.

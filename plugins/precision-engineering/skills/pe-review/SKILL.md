@@ -80,6 +80,15 @@ The Developer resolves blocking findings and routes back. Judge the **remediatio
 
 A remediation reaching files outside both sets means the Developer worked beyond the findings. That is a fidelity finding, and the one case that earns a full re-run across the branch diff.
 
+## Your context budget
+
+`run-context.md` carries the `contextBudget` resolved for the `review` step. **You enforce it**, because the orchestrator cannot see your context while you work.
+
+A review pass has no interior handoff point — your verdict depends on having read every application, so there is nothing to hand over part-way. So the budget binds **only between remediation cycles**, once the findings files are written:
+
+- **Finish the pass you are in, always.** Then, if you are past the budget, say so in your return: `budgetReached: { used, budget }`. The orchestrator spawns your successor for the next cycle, which reads the findings files rather than your transcript.
+- **A first pass that alone exceeds the budget is a signal, not a stop.** Report that the diff is too large for one reviewer and finish anyway. Splitting the one judgment that spans every application costs more than the context does.
+
 ## Guardrails
 
 - The diff is read-only. Never edit source, tests, or documentation — every improvement is a finding the Developer applies.

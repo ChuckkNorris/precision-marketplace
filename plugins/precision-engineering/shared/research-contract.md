@@ -61,13 +61,14 @@ unanswered: [anything in the request this Researcher did not cover]
 
 1. **Dispatch** one Researcher per question, concurrently, on the `research` step's model. Never one Researcher carrying several questions, and never a general-purpose agent.
 2. **Pass** the question, the dependency and version, and the plan directory path for `research-notes.md`. Never the plan or the recon files — what the repository intends is not evidence about the dependency, and it is the cost this agent exists to avoid.
-3. **Return** the answers to the asking agent, `confidence` and citations intact.
+3. **Return** the answers to the asking agent, `confidence` and citations intact — to a **fresh** instance of that agent where the existing one is past its step's `contextBudget`. Research rounds repeat, because one round's answers raise the next round's questions; an agent carried through every round pays for its whole accumulated context on every later turn. `research-notes.md` and the artifact written so far are what the successor needs.
 4. **Escalate an `unresolved`** to the user per [escalation.md](./escalation.md), with the citations as context. A bounded search that failed is a decision to make, not a search to re-run — never re-spawn a Researcher on the same question.
 
 `research-notes.md` in the plan directory accumulates every answer with its citations, and each Researcher reads it first. That is what makes the second question about the same dependency cheap, and what leaves the run's external claims auditable after it ends.
 
 ## Guardrails
 
-- **No subagent spawns another.** A Researcher that needs a child is a question that was too broad; it returns instead. An agent dispatching its own runs with no configured model, no resolved skills, and no ceiling, and its cost lands outside the orchestrator's accounting.
+- **No subagent spawns another.** A Researcher that needs a child is a question that was too broad; it returns instead.
+- **A Researcher is bounded by its source list, not by a clock.** It works the sources in order, stops at the first that answers, and returns `unresolved` when the list is exhausted. A bound an agent has to count for itself does not hold; a bound expressed as *what to read* does. An agent dispatching its own runs with no configured model, no resolved skills, and no ceiling, and its cost lands outside the orchestrator's accounting.
 - Never let an uncited claim into a plan or a finding. It will be built on.
 - Never upgrade a confidence to make an answer more useful.
