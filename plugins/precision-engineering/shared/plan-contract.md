@@ -11,7 +11,7 @@ This contract carries what more than one agent reads: which files exist, who wri
 | File | Written by | Purpose |
 |---|---|---|
 | `brief.md` | Orchestrator | Normalized requirement, whatever its source. |
-| `run-context.md` | Orchestrator | Resolved configuration, applications in scope, and each application's skill list. Written at stage 0; port allocations appended at stage 5 and preserved on resume. Subagents read it instead of the config file. |
+| `run-context.md` | Orchestrator | Resolved configuration, applications in scope, and each application's skill list. **Must state each long-lived step's `contextBudget`**, since the subagent enforces its own and cannot read the config file. Written at stage 0; port allocations appended at stage 5 and preserved on resume. Subagents read it instead of the config file. |
 | `overview.md` | Orchestrator, then Planner, then the orchestrator alone | Requirements, scope, cross-cutting design, risks, open questions, gates, run state. |
 | `<app-name>.recon.md` | Explorer | One per application in scope. Current state of the code the change touches. Written before any design exists and **never edited after**. |
 | `<app-name>.plan.md` | Planner, then Developer | One per application in scope. The design a human approves at the gate, and the task checklist. |

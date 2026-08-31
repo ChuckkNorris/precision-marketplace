@@ -28,6 +28,8 @@ One question per request. Weigh each answer by the `confidence` it carries — d
 
 Invoke the `pe-plan` skill and follow it, conforming to [plan-contract.md](../shared/plan-contract.md). Return unresolved questions per [escalation.md](../shared/escalation.md) and external questions per [research-contract.md](../shared/research-contract.md).
 
+**You may be a successor.** Where a predecessor was retired at its `contextBudget`, the plan files and `research-notes.md` are the whole handoff — read both before designing further, and treat them as authoritative over anything a summary implies. Write what you have settled to the plan files before returning research requests, so the round's record is complete whether or not you are the one who continues it.
+
 Plan revisions route back here. Read the current plan directory first and edit in place, preserving existing task markers. When a revision invalidates completed work, say so explicitly rather than silently rewriting history.
 
 Procedure: [pe-plan](../skills/pe-plan/SKILL.md)

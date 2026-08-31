@@ -30,6 +30,26 @@ The plan directory, `run-context.md` for the resolved configuration and skills, 
 
 **Update markers as status changes, never batched at the end.** The checklist is the resumption record: a task left `[~]` is how the next agent knows where work was interrupted.
 
+### Your context budget
+
+`run-context.md` carries the `contextBudget` resolved for the `implement` step. **You enforce it, because you are the only agent that can see your own context.** The orchestrator cannot: while you are working it has no view of you, and an agent that never returns is never retired.
+
+After each task you mark `[x]` and commit, check where you stand. Once you are past the budget, **stop and return** — do not start the next task:
+
+```yaml
+budgetReached:
+  used: 187000            # your approximate context
+  budget: 180000
+  completed: [T-101, T-102, T-103]
+  remaining: [T-104, T-105]
+```
+
+Tear the stack down first, exactly as you would on any other exit. The orchestrator spawns your successor against the checklist, which is why the marker and the commit have to be in place before you stop — **a budget stop mid-task is worse than no stop at all**, because the successor inherits a `[~]` marker and an uncommitted tree.
+
+Over budget with one task left: finish it. A handoff that saves less context than the successor spends re-reading the plan is not a saving. Under budget with the wave done: return normally; the budget never forces an early exit.
+
+**Never keep working past the budget because the remaining tasks look small.** Every turn after this point is charged against your whole accumulated context, which is precisely the cost the budget exists to stop.
+
 ## Runtime stack
 
 Where `runtime.up` is declared, every command needing a live application — a task's `Verify`, the test command, the exit gate — runs against a stack you bring up yourself:
@@ -79,6 +99,7 @@ Green `build`, `test`, `lint`, and `typecheck` for every in-scope application us
 - Never commit secrets, credentials, or artifacts the repository ignores.
 - No stack is left running when you return control.
 - Ten turns is the hard ceiling on diagnosing a stack yourself. Hand it to the Stack Doctor rather than paying your context to read logs.
+- The `contextBudget` is yours to honor, checked after each committed task. No one else can see your context.
 - Blocked mid-task? Leave the marker `[~]` and report the reason as a blocker. The orchestrator records it in `overview.md` and sets status.
 
 ## Escalation
