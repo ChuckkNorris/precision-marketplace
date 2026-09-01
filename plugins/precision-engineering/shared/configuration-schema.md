@@ -17,7 +17,7 @@ Unknown keys are preserved, never discarded — the config is extensible by desi
 ## Schema
 
 ```yaml
-version: 6                          # required; schema version — see Versioning
+version: 7                          # required; schema version — see Versioning
 
 repository:
   strategy: monorepo                # monorepo | polyrepo
@@ -26,6 +26,7 @@ repository:
 workflow:
   testStrategy: test-after          # tdd | test-after | none
   developmentStrategy: sequential   # sequential | parallel
+  planningDepth: auto               # auto | minimal | standard | full — per application
   gates:                            # approve = a human decides; auto = proceed
     plan: approve
     implementation: auto
@@ -112,6 +113,29 @@ applications:                       # required; one entry per deployable/buildab
 - `tdd` — Developer writes a failing test, confirms it fails, then implements to green, per task.
 - `test-after` — Developer implements, then writes tests before marking the task complete.
 - `none` — No test authoring required. Existing tests must still pass.
+
+### `workflow.planningDepth`
+
+How deep a plan each application gets. **Depth is per application, not per run** — two applications following an existing precedent stay shallow while a third that needs real design goes deep, in the same run.
+
+| Depth | Plan artifact | Design content | Tasks |
+|---|---|---|---|
+| `minimal` | One `<app>.plan.md`, short | The precedent to follow, cited by `path:line`. No template sections. | Checklist with acceptance criteria and a `Verify` per task |
+| `standard` | `<app>.plan.md` | Integration points and the call stack for each core path | + `Depends on` tags |
+| `full` | `<app>.plan.md` | Every applicable template section for the application's `type` — design, risks, rollback | + per-task design notes |
+
+`auto` (the default) derives each application's depth from the `planningSignal` its own Explorer returns — `precedent` → `minimal`, `adaptation` → `standard`, `novel` → `full`. A named value applies to every application and is never downgraded: a repository that wants `full` on a one-line change states `full`.
+
+**Two floors apply under `auto`, and they raise only the applications they touch:**
+
+- An application on either side of a cross-application **interface contract** is at least `standard`. The contract has to be written somewhere both sides can read.
+- An application carrying or depended on by a `runtime:` edge is at least `standard`, since wave scheduling reads `Depends on` tags that `minimal` does not produce.
+
+A third application sharing neither stays `minimal`. **Raising the whole run because one application is novel is the over-planning this key exists to prevent.**
+
+**Never scaled down:** Explore, the plan gate, and Review. Those are the quality guarantees, and they are the cheap stages. What scales is how much design the plan states — which is what *"a change too small to plan is still planned, and the plan is correspondingly small"* has always meant.
+
+**Underplanning is recoverable and self-correcting.** A Developer that finds a `minimal` plan insufficient escalates as it would for any plan defect, and the run **promotes that application to `standard` and re-plans** rather than patching the gap. The worst case is a short plan discovered to be short — cheaper than deep-planning every application in advance. A promotion is recorded in `overview.md`, and a repository whose `minimal` runs are routinely promoted should set `standard` explicitly.
 
 ### `workflow.developmentStrategy`
 - `sequential` — One Developer runs at a time. Nothing is allocated, and collisions with anything else on the host are the developer's to manage. This is the default, and how every run behaved before `runtime` existed.
@@ -247,6 +271,7 @@ Every bump adds a row below, naming each key involved. That list is the only inp
 | 4 | Added `workflow.steps.stackDoctor` and `workflow.steps.<step>.contextBudget`. Both additive with defaults: a version 3 config gets an inheriting Stack Doctor and the default `120000` budget on `implement` and `review`, which changes how those stages are dispatched but not what they produce. `/pe-setup` asks for a `stackDoctor` model on its existing rule for any step whose `model` is unset, and adopts the budget default without asking — it is a cost policy with a working default, not a repository fact. |
 | 5 | Added `workflow.steps.research`. Additive with a default: a version 4 config gets an inheriting Researcher. Also documents the per-step safe handoff points for `contextBudget`, which corrects a version 4 config that set one on `review` expecting it to bind within a single pass — the value is unchanged, what it bounds is now stated. |
 | 6 | Added `contextBudget` to `workflow.steps.plan`, and raised the documented default on all three long-lived steps to `180000`. Also relocates enforcement: the budget is now honored by the subagent that owns the context rather than policed by the orchestrator, which could not see it. Additive — a version 5 config keeps whatever budgets it set and gains one on `plan`; what changed is where the check happens, not the values. |
+| 7 | Added `workflow.planningDepth`. Additive with a default: a version 6 config gets `auto`, which derives each application's depth from its Explorer's `planningSignal` rather than planning every application to the same depth. Explore, the plan gate, and Review are unchanged at every depth. A repository wanting the previous behavior sets `full`. |
 
 
 ## Extending the schema

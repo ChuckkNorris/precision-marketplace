@@ -18,9 +18,17 @@ The brief, `run-context.md` for the resolved configuration and skills, the appli
 3. Decide scope. **Write out-of-scope before writing tasks** — adjacent problems noticed while planning are recorded there, never folded into the work.
 4. Complete `overview.md` per [plan-contract.md](../../shared/plan-contract.md) — the orchestrator seeded it with the requirement and scope; you add design, risks, and rollback, and set status `awaiting-approval` — and write each `<app-name>.plan.md` per [plan-artifacts.md](./references/plan-artifacts.md). Integration points crossing an application boundary go in `overview.md` under **Interface contract**, fixed verbatim and numbered — every wire shape, route, accessible name, and copy string the applications must agree on. This section is what lets implementation run concurrently, so an interface left to "agree on later" is a scheduling cost, not a detail.
    **Put nothing in the plan an approver cannot act on and a Developer cannot implement from.** Scope, behavior, contracts, call stacks, and connection points belong here; the mechanics of satisfying them do not.
-5. Structure the design sections from the plan template for the application's `type`, per the mapping in [plan-artifacts.md](./references/plan-artifacts.md). Write the sections that apply, name every dropped one in a single `**Not applicable:**` line with its reason, and expand the `<Additional…Section>` placeholders — they are where the plan stops being generic.
-6. Trace the call stack for each core path end to end, naming real functions and modules, under the `#### Callstack` heading of the endpoint or flow it belongs to. This is where code-level design errors surface — a plan whose call stack does not connect is wrong regardless of how reasonable the prose reads.
-7. Name test scenarios explicitly: happy path, boundary, failure, authorization. "Add unit tests" is not a scenario.
+5. Structure the design sections **to that application's planning depth**, which `run-context.md` states per application. Depth is per application: in one run you may write a two-paragraph plan for one and a full template for another, and deepening the shallow one because its neighbour is deep is the over-planning the setting exists to prevent.
+
+   | Depth | Write |
+   |---|---|
+   | `minimal` | The precedent the Explorer cited, by `path:line`, and what differs from it. Then the task checklist. **No template sections.** If you cannot state the change as a delta from the precedent in a short paragraph, the signal was wrong — say so and plan it as `standard`. |
+   | `standard` | Integration points and a `#### Callstack` for each core path. No risks or rollback narrative unless the change carries one worth stating. |
+   | `full` | Every applicable template section for the application's `type`, per the mapping in [plan-artifacts.md](./references/plan-artifacts.md). |
+
+   At `full`, structure the design sections from the plan template for the application's `type`. Write the sections that apply, name every dropped one in a single `**Not applicable:**` line with its reason, and expand the `<Additional…Section>` placeholders — they are where the plan stops being generic.
+6. At `standard` and `full`, trace the call stack for each core path end to end, naming real functions and modules, under the `#### Callstack` heading of the endpoint or flow it belongs to. This is where code-level design errors surface — a plan whose call stack does not connect is wrong regardless of how reasonable the prose reads.
+7. Name test scenarios explicitly at every depth: happy path, boundary, failure, authorization. "Add unit tests" is not a scenario. **Test scenarios never scale down** — a shallow plan is a plan with less design stated, not less verification.
 8. Derive each task's `Verify` from the application's configured `commands`, choosing the cheapest command that would catch that task failing. A task you cannot write a verification for is not yet specified well enough.
 9. Tag every cross-application `Depends on` edge `contract:` or `runtime:` per [plan-artifacts.md](./references/plan-artifacts.md). Ask what the task needs *at the moment it is written*: an interface you already fixed is `contract:`, and only code that must be built, running, or seeding data is `runtime:`. Most edges are `contract:` once the interface contract is complete — that is the point of writing one.
 
@@ -40,6 +48,8 @@ Apply the escalate-versus-decide test in the contract first. Anything answerable
 - Every task meets the task-format rules in [plan-artifacts.md](./references/plan-artifacts.md): matched to a checklist entry, carrying observable acceptance, a runnable `Verify`, and small enough for one agent in one sitting.
 - Every cross-application interface is fixed verbatim under **Interface contract**, and every task's `Depends on` is complete with each cross-application edge tagged `contract:` or `runtime:`. Implementation schedules tasks rather than applications from those tags, so an omitted edge becomes a race and a mistagged one becomes a broken build.
 - Per-application plan files come from `applications[]`. Never emit a fixed frontend/backend pair; a single `fullstack` application gets a single plan file.
+- **A depth is a ceiling on design, never on rigor.** Scope, acceptance criteria, `Verify` commands, and test scenarios are written in full at `minimal`. What a shallow plan omits is design narrative the precedent already answers.
+- **Say so when a depth is wrong.** An application signalled `precedent` whose change turns out not to follow one is planned at the depth it needs, and the mismatch is reported. Never pad a plan to look thorough, and never thin one to match a label.
 
 ## Revising an existing plan
 
