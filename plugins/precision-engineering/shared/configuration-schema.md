@@ -120,18 +120,19 @@ How deep a plan each application gets. **Depth is per application, not per run**
 
 | Depth | Plan artifact | Design content | Tasks |
 |---|---|---|---|
-| `minimal` | One `<app>.plan.md`, short | The precedent to follow, cited by `path:line`. No template sections. | Checklist with acceptance criteria and a `Verify` per task |
-| `standard` | `<app>.plan.md` | Integration points and the call stack for each core path | + `Depends on` tags |
+| `minimal` | One `<app>.plan.md`, short | The precedent to follow, cited by `path:line`. No template sections. | Checklist with acceptance criteria, a `Verify` per task, and `Depends on` tags |
+| `standard` | `<app>.plan.md` | Integration points and the call stack for each core path | + `contract:` edges against the interface contract |
 | `full` | `<app>.plan.md` | Every applicable template section for the application's `type` — design, risks, rollback | + per-task design notes |
+
+**`Depends on` tags are written at every depth.** They are scheduling metadata, not design: a `runtime:` edge names another application's task IDs, which the Planner already has in view because it writes every application's plan. Only `contract:` edges need more, because they cite numbered items in the **Interface contract** — and writing that contract is design work, which is what the floor below is for.
 
 `auto` (the default) derives each application's depth from the `planningSignal` its own Explorer returns — `precedent` → `minimal`, `adaptation` → `standard`, `novel` → `full`. A named value applies to every application and is never downgraded: a repository that wants `full` on a one-line change states `full`.
 
-**Two floors apply under `auto`, and they raise only the applications they touch:**
+**One floor applies under `auto`, and it raises only the applications it touches:** an application on either side of a cross-application **interface contract** is at least `standard`, because a `contract:` edge cites numbered items that have to be written somewhere both sides can read, and writing them is design work.
 
-- An application on either side of a cross-application **interface contract** is at least `standard`. The contract has to be written somewhere both sides can read.
-- An application carrying or depended on by a `runtime:` edge is at least `standard`, since wave scheduling reads `Depends on` tags that `minimal` does not produce.
+**A `runtime:` edge raises nothing.** An end-to-end suite that needs two other applications built and serving is the commonest `runtime:` edge there is, and it is also among the likeliest changes to be following an existing spec pattern — so flooring it would deepen exactly the plan that least needs it. Its tag names task IDs, and the Planner writes it at `minimal` like any other.
 
-A third application sharing neither stays `minimal`. **Raising the whole run because one application is novel is the over-planning this key exists to prevent.**
+An application sharing no interface stays `minimal`. **Raising the whole run because one application is novel is the over-planning this key exists to prevent.**
 
 **Never scaled down:** Explore, the plan gate, and Review. Those are the quality guarantees, and they are the cheap stages. What scales is how much design the plan states — which is what *"a change too small to plan is still planned, and the plan is correspondingly small"* has always meant.
 

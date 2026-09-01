@@ -69,8 +69,9 @@ Run one Explorer per in-scope application, concurrently when more than one is in
 
 | Floor | Applies to | Why |
 |---|---|---|
-| At least `standard` | Both sides of a cross-application interface | The contract has to be written somewhere both can read |
-| At least `standard` | Either end of a `runtime:` dependency, per `applications[].dependsOn` | Wave scheduling reads `Depends on` tags, which `minimal` does not produce |
+| At least `standard` | Both sides of a cross-application interface | A `contract:` edge cites numbered items in **Interface contract**, and writing those is design work |
+
+**A `runtime:` edge floors nothing.** `Depends on` tags are written at every depth — a `runtime:` edge names another application's task IDs, which needs no design section. The commonest one is an end-to-end suite waiting on two applications to be built and serving, and that is also among the likeliest plans to be following an existing spec pattern; flooring it would deepen the plan that least needs it.
 
 Record each application's resolved depth, its signal, and the Explorer's one-line reason in `overview.md`, then append them to `run-context.md` so the Planner reads them rather than re-deriving. **An unrecorded depth cannot be audited, and a promotion later has nothing to compare against.**
 

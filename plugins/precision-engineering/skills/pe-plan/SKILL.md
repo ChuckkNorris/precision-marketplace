@@ -22,7 +22,7 @@ The brief, `run-context.md` for the resolved configuration and skills, the appli
 
    | Depth | Write |
    |---|---|
-   | `minimal` | The precedent the Explorer cited, by `path:line`, and what differs from it. Then the task checklist. **No template sections.** If you cannot state the change as a delta from the precedent in a short paragraph, the signal was wrong — say so and plan it as `standard`. |
+   | `minimal` | The precedent the Explorer cited, by `path:line`, and what differs from it. Then the task checklist, `Depends on` tags included. **No template sections.** If you cannot state the change as a delta from the precedent in a short paragraph, the signal was wrong — say so and plan it as `standard`. |
    | `standard` | Integration points and a `#### Callstack` for each core path. No risks or rollback narrative unless the change carries one worth stating. |
    | `full` | Every applicable template section for the application's `type`, per the mapping in [plan-artifacts.md](./references/plan-artifacts.md). |
 
@@ -30,7 +30,7 @@ The brief, `run-context.md` for the resolved configuration and skills, the appli
 6. At `standard` and `full`, trace the call stack for each core path end to end, naming real functions and modules, under the `#### Callstack` heading of the endpoint or flow it belongs to. This is where code-level design errors surface — a plan whose call stack does not connect is wrong regardless of how reasonable the prose reads.
 7. Name test scenarios explicitly at every depth: happy path, boundary, failure, authorization. "Add unit tests" is not a scenario. **Test scenarios never scale down** — a shallow plan is a plan with less design stated, not less verification.
 8. Derive each task's `Verify` from the application's configured `commands`, choosing the cheapest command that would catch that task failing. A task you cannot write a verification for is not yet specified well enough.
-9. Tag every cross-application `Depends on` edge `contract:` or `runtime:` per [plan-artifacts.md](./references/plan-artifacts.md). Ask what the task needs *at the moment it is written*: an interface you already fixed is `contract:`, and only code that must be built, running, or seeding data is `runtime:`. Most edges are `contract:` once the interface contract is complete — that is the point of writing one.
+9. Tag every cross-application `Depends on` edge `contract:` or `runtime:` per [plan-artifacts.md](./references/plan-artifacts.md). **Tags are written at every depth, including `minimal`** — they are scheduling metadata, and a `runtime:` edge names another application's task IDs, which you already have in view because you write every application's plan. A `contract:` edge is the exception: it cites numbered **Interface contract** items, so an application carrying one is at least `standard` and the contract is written. Ask what the task needs *at the moment it is written*: an interface you already fixed is `contract:`, and only code that must be built, running, or seeding data is `runtime:`. Most edges are `contract:` once the interface contract is complete — that is the point of writing one.
 
 ## Escalating open questions
 
