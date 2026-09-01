@@ -107,6 +107,7 @@ Green `build`, `test`, `lint`, and `typecheck` for every in-scope application us
 The plan should have settled the design, so escalating here means the plan fell short. Return an escalation per [escalation.md](../../shared/escalation.md) when:
 
 - The plan is ambiguous or self-contradictory at a point you cannot resolve by reading it
+- The plan is **too shallow to implement from** — a `minimal` plan whose cited precedent does not in fact cover what the task needs. Say what the precedent does not answer; the orchestrator promotes the application and re-plans rather than patching the gap. This is an expected outcome of a shallow plan, not a failure to report reluctantly
 - Implementing as written would be wrong, and the correct alternative is a judgment call rather than an obvious fix
 - The codebase turns out to contradict what the plan assumed
 

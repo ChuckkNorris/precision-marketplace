@@ -21,6 +21,17 @@ The brief, `run-context.md` for the resolved configuration and skills, and the a
    - Existing test coverage for the area, and the test conventions actually in use
 3. Note what does **not** exist. An absent abstraction is a planning constraint.
 4. Read the code to verify each claim.
+5. **Judge how much planning this application needs**, and return it. You are the only agent that has read the code before any design exists, so this is your call to make and no one else's.
+
+   | Signal | When | Test |
+   |---|---|---|
+   | `precedent` | An existing implementation does substantially this, and the change is following it | You can cite the precedent by `path:line` and name what differs in one sentence |
+   | `adaptation` | A precedent exists but the contract, data flow, or failure behavior differs | You can cite it, but naming what differs takes more than a sentence |
+   | `novel` | No precedent, or the change needs an abstraction the codebase lacks | **Absent abstractions** is non-empty, or nothing to cite |
+
+   **Judge only your own application.** Another application being novel does not make yours so, and saying so would deepen a plan that does not need it.
+
+   When in doubt, choose the deeper signal. Under-signalling costs a re-plan; over-signalling costs a plan nobody needed, and only the first is recoverable cheaply.
 
 ## Output
 
@@ -54,6 +65,13 @@ generated code, vendored files.
 ```
 
 Writing only this section is what keeps the facts falsifiable: they are recorded before any design exists to bend them toward.
+
+Return the signal alongside your summary — it does not go in the recon file, because it is a judgment about the *change*, not a fact about the code:
+
+```yaml
+planningSignal: precedent | adaptation | novel
+because: One sentence. For `precedent`, the `path:line` being followed and what differs.
+```
 
 Invoked standalone with no plan directory, report the same content inline instead.
 

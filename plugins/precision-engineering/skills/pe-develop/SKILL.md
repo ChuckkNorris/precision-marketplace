@@ -63,9 +63,23 @@ On a dirty working tree: stop and ask, or unattended, stop and report.
 
 Run one Explorer per in-scope application, concurrently when more than one is in scope. Each writes its own application's `<app>.recon.md`, so concurrent Explorers never contend for a path.
 
+**Each Explorer also returns a `planningSignal` for its own application.** Under `workflow.planningDepth: auto`, that is how deep that application's plan is written — `precedent` → `minimal`, `adaptation` → `standard`, `novel` → `full`. A named `planningDepth` applies to every application instead, and is never downgraded.
+
+**Depth is per application.** One application signalling `novel` does not deepen the others; planning all three because one is hard is exactly the over-planning this resolves. Two floors apply, and each raises only the applications it touches:
+
+| Floor | Applies to | Why |
+|---|---|---|
+| At least `standard` | Both sides of a cross-application interface | A `contract:` edge cites numbered items in **Interface contract**, and writing those is design work |
+
+**A `runtime:` edge floors nothing.** `Depends on` tags are written at every depth — a `runtime:` edge names another application's task IDs, which needs no design section. The commonest one is an end-to-end suite waiting on two applications to be built and serving, and that is also among the likeliest plans to be following an existing spec pattern; flooring it would deepen the plan that least needs it.
+
+Record each application's resolved depth, its signal, and the Explorer's one-line reason in `overview.md`, then append them to `run-context.md` so the Planner reads them rather than re-deriving. **An unrecorded depth cannot be audited, and a promotion later has nothing to compare against.**
+
 ### 3 - Plan
 
-One Planner covering all in-scope applications, so cross-application design stays coherent.
+One Planner covering all in-scope applications, so cross-application design stays coherent — **writing each application's plan to that application's depth.** A mixed run gets one Planner, one deep plan, and short ones for the rest.
+
+**Always one Planner, at every depth.** The saving from a shallow depth is the design it does not write, not a spawn avoided: a Planner producing three short plans is quick and cheap, while writing them yourself puts stage work in the one context that can never be retired, and splits the plan directory across two authors. A `minimal` run is a cheap Planner, not an absent one.
 
 Each application gets one plan file, `<app>.plan.md` — design, integration points, and tasks. It is the whole gate artifact: reconnaissance stays in `<app>.recon.md`, and the Developer decides low-level mechanics itself at stage 5.
 
@@ -110,6 +124,10 @@ Give each Developer its own worktree plus its slot's environment, with `{port:<n
 Where the harness cannot provide a worktree, `parallel` is unavailable: run `sequential` instead and report why.
 
 Sweep anything carrying this run's prefix — stacks, worktrees, and slot branches — at the start of this stage and again at stage 7. A Developer that died mid-wave cleaned up nothing: whatever `runtime.up` started still holds its ports, and its worktree still holds its branch. This sweep is the only cleanup that survives a dead subagent.
+
+**A Developer that reports a `minimal` plan as insufficient promotes that application, it does not get patched.** Set that application to `standard`, re-run stage 3 for it, and record the promotion in `overview.md` with the task that triggered it. Promote only the application that fell short; the others keep the depth their own Explorers earned. A second promotion on one application means the signal was wrong at the source — plan it `full` and say so in your report.
+
+This is what makes a shallow plan safe to try: the downside is a short plan discovered to be short, which costs one re-plan, against deep-planning every application in advance whether or not it needed it.
 
 A `runtime:` edge the plan tagged `contract:` breaks the build. Stop the affected Developers, re-run that wave sequentially, and report it — it is a plan defect, not a scheduling one.
 
@@ -263,7 +281,7 @@ When the owning agent's context is gone, re-hydrate a fresh instance from the pl
 - Every subagent you spawn is one of the six named in **Subagent dispatch**, and no subagent spawns another. A general-purpose agent doing a stage's work is that stage's subagent without its constraints, its skills, or its configured model — and a subagent that spawns its own runs unbounded, with the cost landing under it rather than in your accounting.
 - An external-dependency question routes to a Researcher, one per question. Never answer it yourself, and never let the agent that asked go and investigate it.
 - Every gate resolution is recorded in `## Gates` with who resolved it and the signal. An unrecorded approval cannot be audited and will be re-asked on the next resume.
-- Every stage runs on every change. Never skip Explore or Plan because a change looks small.
+- Every stage runs on every change. Never skip Explore, the plan gate, or Review because a change looks small — `workflow.planningDepth` scales how much design a plan states, never which stages run.
 - Never advance past a red gate, an unresolved blocker in `overview.md`, or a task still marked `[~]`.
 - Every artifact lands in `docs/plans/<feature-slug>/`. That directory is the audit record for the run, and the only state a later invocation inherits.
 - Report honestly. A stage skipped, a test failing, a finding unresolved — say so plainly.
