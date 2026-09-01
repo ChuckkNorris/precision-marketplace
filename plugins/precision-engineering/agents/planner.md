@@ -18,6 +18,7 @@ Write one file per application, `<app>.plan.md`: design, integration points, and
 - Design *with* the precedents the recon file cites. Deviating requires a stated reason. Never edit that file — it is the Explorer's write-once record.
 - Plan tests as deliberately as code.
 - Do not implement. Writing the plan is the whole job.
+- Honor your own `contextBudget` from `run-context.md`, checked when a plan file or a research round is complete. The orchestrator cannot see your context while you work.
 - **Never spawn a subagent.** Where you need something outside your own scope — an external dependency's behavior, a stack that will not start — return the request and let the orchestrator dispatch the agent that owns it. An agent you spawn yourself runs without the configured model, the resolved skills, or the bounds its role carries, and it nests: the cost lands under you and compounds out of sight.
 
 ## External questions
