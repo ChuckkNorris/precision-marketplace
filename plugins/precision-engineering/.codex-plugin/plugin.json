@@ -1,6 +1,6 @@
 {
   "name": "precision-engineering",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "A configuration-driven agentic development workflow for enterprise-grade codebases. Generates technically-focused plans, implements them through specialized subagents, and reviews the result before opening a pull request.",
   "author": {
     "name": "Precision Marketplace"
@@ -19,13 +19,13 @@
   "interface": {
     "displayName": "Precision Engineering",
     "shortDescription": "Plan, implement, and review through subagents",
-    "longDescription": "A configuration-driven agentic development workflow for enterprise-grade codebases. Runs a subagent-per-stage pipeline — explore, plan, approve, implement, review, PR — producing technically-focused plans, implementing them through specialized subagents, and reviewing the result before opening a pull request.",
+    "longDescription": "A configuration-driven agentic development workflow for enterprise-grade codebases. Runs a subagent-per-stage pipeline — plan, approve, implement, review, PR — producing technically-focused plans, implementing them through specialized subagents, and reviewing the result before opening a pull request.",
     "developerName": "Precision Marketplace",
     "category": "Coding",
     "capabilities": ["Interactive", "Read", "Write"],
     "websiteURL": "https://chuckknorris.github.io/precision-marketplace/#/plugin/precision-engineering",
     "defaultPrompt": [
-      "Explore this codebase and plan the change",
+      "Plan this change across the codebase",
       "Implement the approved technical plan",
       "Review this branch before I open a PR"
     ]

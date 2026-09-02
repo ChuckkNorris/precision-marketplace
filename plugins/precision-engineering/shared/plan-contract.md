@@ -1,6 +1,6 @@
 # Development Plan Contract
 
-Defines the artifacts under `docs/plans/<feature-slug>/`. The Explorer records current state, the Planner designs against it, the Developer implements and records progress, the Reviewer audits. All four treat this contract as binding.
+Defines the artifacts under `docs/plans/<feature-slug>/`. The Planner explores and designs, the Developer implements and records progress, the Reviewer audits, and the orchestrator owns run state. All four treat this contract as binding.
 
 This contract carries what more than one agent reads: which files exist, who writes each, task status, `overview.md`, and how a run resumes. **How to author a file is owned by the skill that writes it** — an agent that never writes a file does not pay to learn its section rules.
 
@@ -11,33 +11,36 @@ This contract carries what more than one agent reads: which files exist, who wri
 | File | Written by | Purpose |
 |---|---|---|
 | `brief.md` | Orchestrator | Normalized requirement, whatever its source. |
-| `run-context.md` | Orchestrator | Resolved configuration, applications in scope, and each application's skill list. Written at stage 0; port allocations appended at stage 5 and preserved on resume. Subagents read it instead of the config file. |
-| `overview.md` | Orchestrator, then Planner, then the orchestrator alone | Requirements, scope, cross-cutting design, risks, open questions, gates, run state. |
-| `<app-name>.recon.md` | Explorer | One per application in scope. Current state of the code the change touches. Written before any design exists and **never edited after**. |
-| `<app-name>.plan.md` | Planner, then Developer | One per application in scope. The design a human approves at the gate, and the task checklist. |
+| `run-context.md` | Orchestrator | The run's summary — plan directory, branch, ticket — and the port allocations. Everything else an agent needs is in the config. |
+| `overview.md` | Orchestrator | Requirements, scope, cross-cutting design, interface contract, risks, open questions, gates, run state. |
+| `<app-name>.plan.md` | Planner, then Developer | One per application in scope. Current state, the design a human approves at the gate, and the task checklist. |
 | `<app-name>.findings.md` | Reviewer | One per application in scope. Verdict and ranked findings from the adversarial pass. |
 
-**The plan is the approval artifact.** `<app-name>.plan.md` states what is being built, how it behaves, and where it connects — enough for a human to approve and an agent to implement. Low-level mechanics are the Developer's judgment, not the plan's content. Reconnaissance stays in `<app-name>.recon.md`: it is input to the design, not evidence the design is right, so an approver never has to read past it.
+**The plan is the approval artifact.** `<app-name>.plan.md` states what the code does today, what is being built, how it behaves, and where it connects — enough for a human to approve and an agent to implement. Low-level mechanics are the Developer's judgment, not the plan's content.
 
-**One writer per path.** Each Explorer owns one application's recon file, and each Developer its own application's plan file — which is what lets those stages run concurrently. Nothing writes a file another stage owns, which is what keeps `## Current state` falsifiable: it was recorded before any design existed to bend it toward. A recon fact that turns out wrong is corrected where it is used — the plan's **Design** or the task's **Notes** — never by editing the recon file. `overview.md` spans applications, so after the plan gate only the orchestrator writes it: subagents return status, verification rows, and blockers for it to record.
+**One writer per path.** Each application's Planner, Developer, and Reviewer own that application's files and no others — which is what lets those stages run one agent per application, concurrently. `overview.md` spans applications, so the orchestrator alone writes it: subagents return the interfaces, design, status, verification rows, and blockers for it to record, and never write into a file another stage owns.
 
 **Progress lives in the plan.** Task status sits in the checklist that defines the task, run state in `overview.md`. There is no progress file, so nothing drifts out of sync.
 
-## Port allocations
+## `run-context.md`
 
-Under `workflow.developmentStrategy: parallel` with `runtime.isolation: assigned`, the orchestrator appends this section to `run-context.md` at stage 5 — before spawning each wave, never while Developers are reading it. It is the run's record of who holds which ports.
+The run's own facts — nothing derivable from the config or a skill:
 
 ```markdown
+# <Feature Title> — Run context
+
+**Plan directory:** `docs/plans/<feature-slug>` · **Branch:** <branch> · **Ticket:** <id or "none">
+
 ## Port allocations
 | Slot | Holder | Project | API_PORT | PG_PORT |
 |---|---|---|---|---|
 | 1 | developer:companysample-api | pe-aut-11-1 | 5293 | 5532 |
-| 2 | reviewer | pe-aut-11-2 | 5393 | 5632 |
+| 2 | reviewer:companysample-api | pe-aut-11-2 | 5393 | 5632 |
 ```
 
-One column per entry in `runtime.ports`, plus the project name isolating that slot's containers and volumes. A slot is held for the life of the run and **never recycled**.
+`## Port allocations` exists only under `workflow.developmentStrategy: parallel` with `runtime.isolation: assigned`. The orchestrator appends to it before spawning each subagent that needs a stack, never while one is reading the file. One column per entry in `runtime.ports`, plus the project name isolating that slot's containers and volumes. A slot is held for the life of the run and **never recycled**.
 
-**A resume never reallocates.** Stage 0 rewrites the rest of `run-context.md` on every invocation; this section is carried forward unchanged instead, or the resumed run strands the containers the first one left holding those ports.
+**A resume never reallocates.** Stage 0 rewrites the summary on every invocation; this section is carried forward unchanged instead, or the resumed run strands the containers the first one left holding those ports.
 
 ## Task status markers
 
@@ -49,7 +52,7 @@ One column per entry in `runtime.ports`, plus the project name isolating that sl
 
 The Developer sets `[~]` when it begins a task and `[x]` only once that task's `Verify` command passes. **Update the marker as status changes, never batched at the end** — the checklist is the resumption record, and a `[~]` left behind by a lost context is what tells the next agent where work was interrupted.
 
-**Task anatomy.** Every task carries `Depends on`, `Change`, `Acceptance`, `Verify`, and `Notes`. The Planner writes all but `Notes`, which the Developer appends for what the plan did not anticipate. Task IDs are globally unique across the plan directory, not per file.
+**Task anatomy.** Every task carries `Depends on`, `Change`, `Acceptance`, `Verify`, and `Notes`. The Planner writes all but `Notes`, which the Developer appends for what the plan did not anticipate. **IDs are unique within their own file** — task, question, and finding alike, since each application's agents number theirs concurrently. Any reference reaching another file names the application: `web T-012`, `api F-003`.
 
 `Depends on` tags every edge reaching another application `contract:` or `runtime:`. Implementation builds its concurrency schedule from those tags, so they are scheduling instructions rather than commentary.
 
@@ -77,8 +80,9 @@ Cross-cutting decisions only — anything spanning more than one application, or
 any choice a reader would otherwise question. Per-app detail belongs in the app plan.
 
 ## Interface contract
-Every interface crossing an application boundary, fixed verbatim and numbered so a task's
-`Depends on` can cite one: wire shapes, routes, accessible names, copy strings, error shapes.
+Every interface crossing an application boundary, as each Planner returned it and the
+orchestrator reconciled it — fixed verbatim and numbered so a task's `Depends on` can cite
+one: wire shapes, routes, accessible names, copy strings, error shapes.
 
 | # | Contract | Producer | Consumer |
 |---|---|---|---|
@@ -126,14 +130,14 @@ Exit-gate evidence. The Developer runs the gate and returns it; the orchestrator
 | api | `pnpm -C apps/api test` | `a1b2c3d` | pass |
 ```
 
-Each row carries the short SHA its command ran against. The orchestrator confirms every row at `HEAD` before review — re-running only the rows whose application changed since — so a row without its commit is worth nothing.
+Each row carries the short SHA its command ran against, so a row without its commit is worth nothing. The orchestrator confirms every row at `HEAD` before review; a row whose application changed since is re-run by that application's Reviewer, which returns the confirming commit.
 
 `overview.md` carries **no per-task list**. Task status belongs to the plan file that defines the task.
 
-**Status:** the orchestrator seeds `planning` and the Planner sets `awaiting-approval`. From the plan gate onward the orchestrator owns every transition — `in-progress`, `in-review`, `complete`, `blocked` — because the stages that follow can run concurrently.
+**Status:** the orchestrator owns every transition — `planning`, `awaiting-approval` once the plans are aligned, then `in-progress`, `in-review`, `complete`, `blocked` — because every stage after planning runs one agent per application, concurrently.
 
 **`overview.md` is the continuation record.** It exists before any subagent runs and carries the branch, so a later invocation — a cloud agent resuming after an approval comment, or an agent recovering from a lost context — finds the run by matching its branch and continues from `Status`, `Gates`, and the task checklists. A run whose `overview.md` was never written cannot be resumed.
 
 ## Resuming
 
-An agent resuming after a context reset reads `overview.md` for run state, `<app-name>.recon.md` for current state, and `<app-name>.plan.md` for task status and detail, then continues without re-deriving anything. These files are authoritative over any agent's recollection — an existing `<app-name>.recon.md` means exploration is done and must not be repeated.
+An agent resuming after a context reset reads `overview.md` for run state and the interface contract, and `<app-name>.plan.md` for current state, task status, and detail, then continues without re-deriving anything. These files are authoritative over any agent's recollection — a plan whose `## Current state` is written means that application is explored and must not be re-explored.

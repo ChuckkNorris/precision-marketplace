@@ -12,7 +12,7 @@ of instructions. Write the workflow once; install it wherever your team already 
 
 | Plugin | Description | Harnesses |
 | --- | --- | --- |
-| [precision-engineering](plugins/precision-engineering) | A configuration-driven agentic development workflow for enterprise-grade codebases. Explores the code, writes a plan a human approves, implements it through specialized subagents, and reviews the diff adversarially before opening a pull request. | Claude · Cursor · Codex |
+| [precision-engineering](plugins/precision-engineering) | A configuration-driven agentic development workflow for enterprise-grade codebases. One planner per application explores the code and writes a plan a human approves, the orchestrator reconciles the interfaces between them, subagents implement it, and reviewers judge the diff adversarially before a pull request is opened. | Claude · Cursor · Codex |
 
 A browsable overview of the plugin — skills, agents, commands, and workflow diagrams — is published
 from [`public/index.html`](public/index.html) to this repository's GitHub Pages site by
