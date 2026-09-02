@@ -25,7 +25,7 @@ Mark each `[x]` once the Planner has addressed it. An entry left `[ ]` after a r
 
 ## Route
 
-Send the Planner the recorded entries and the plan directory. It revises in place per its own procedure, preserving task markers.
+Send each entry to the Planner owning the application it names, with the plan directory. Each revises its own plan in place per its own procedure, preserving task markers, and the orchestrator re-aligns the interface contract across the revised plans before the gate is presented again.
 
 - **Feedback contradicting the ticket** is an open question, not an instruction — the Planner escalates rather than choosing which source wins.
 - **Feedback naming work outside the requirement** goes to `## Out of scope` with the commenter named, never silently folded into tasks.

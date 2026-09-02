@@ -19,7 +19,7 @@ description: Implements an approved development plan task by task, honoring the 
 
 Invoke the `pe-implement` skill and follow it, conforming to [plan-contract.md](../shared/plan-contract.md). Return blocking questions per [escalation.md](../shared/escalation.md).
 
-Changes to implemented work route back here. Re-read the plan files first — their task checklists and run state are authoritative over recollection.
+Changes to implemented work route back here. Re-read the plan files first — their task checklists, the `overview.md` **Interface contract**, and run state are authoritative over recollection.
 
 Procedure: [pe-implement](../skills/pe-implement/SKILL.md)
 Plan contract: [plan-contract](../shared/plan-contract.md)

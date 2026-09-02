@@ -27,7 +27,7 @@ Read the repository; do not ask what you can determine.
 
 ## 2 - Propose
 
-Present the detected config with **evidence inline** — each non-obvious value paired with what it came from (`build.gradle`, `.github/workflows/ci.yml:23`). Evidence lets the user correct a wrong inference instead of accepting it.
+Present the detected config **in your report**, each non-obvious value paired with the evidence it came from (`build.gradle`, `.github/workflows/ci.yml:23`). Evidence lets the user correct a wrong inference instead of accepting it — and it belongs in the report, never in the file, which carries values only.
 
 Flag low-confidence detections explicitly rather than burying them.
 
@@ -50,13 +50,13 @@ On a re-run, ask only about keys new to the schema version (see [Re-running](#re
 
 **Run every detected command.** A config full of plausible commands that do not execute is worse than an empty one — it fails deep inside a later `/pe-develop` run rather than here.
 
-Run non-mutating commands (`build`, `test`, `lint`, `typecheck`) directly. Never run `migrate` or any command that mutates state — mark it `unvalidated` and tell the user.
+Run non-mutating commands (`build`, `test`, `lint`, `typecheck`) directly. Never run `migrate` or any command that mutates state — declare it and report it as unvalidated.
 
 Drop commands that fail and report them. Omitting a command is recoverable; declaring a broken one is not.
 
 ### Isolation scan — `parallel` only
 
-Whether two stacks can run at once cannot be proven here: it is a mutating, expensive test. Scan statically instead, and write the `runtime` block marked `unvalidated`, exactly as `migrate` is.
+Whether two stacks can run at once cannot be proven here: it is a mutating, expensive test. Scan statically instead, and report the `runtime` block as unvalidated, exactly as `migrate` is.
 
 | Look at | For |
 |---|---|
@@ -69,19 +69,19 @@ Whether two stacks can run at once cannot be proven here: it is a mutating, expe
 Report each fixed value with its file and line — a silent fallback counts as fixed — then take one of two paths:
 
 - **All parameterizable** — propose the `runtime` block, naming the environment variable each value would read.
-- **Some are not** — list the changes the repository needs and offer `sequential`, which needs none. Never write `parallel` for a repository that cannot honor it; the run would fail deep inside stage 5 rather than here.
+- **Some are not** — list the changes the repository needs and offer `sequential`, which needs none. Never write `parallel` for a repository that cannot honor it; the run would fail deep inside implementation rather than here.
 
 ## 5 - Write
 
-Write `.agents/precision-engineering.config.md` per [configuration-schema.md](../../shared/configuration-schema.md).
+Write `.agents/precision-engineering.config.md` per [configuration-schema.md](../../shared/configuration-schema.md), carrying **schema keys and values only** — no comments copied from the schema, no detection evidence, no validation status, no notes about this run. A config that records a moment in time drifts from every other repository's and produces diffs that mean nothing.
 
-Report: applications detected, commands validated, commands dropped and why, and anything left unvalidated.
+Report: applications detected, commands validated, commands dropped and why, and anything left unvalidated. The report is where all of that belongs.
 
 ## Re-running
 
 Idempotent by requirement. On an existing config:
 
-- **Reconcile the schema version first.** Compare the config's `version` against the current one in [configuration-schema.md](../../shared/configuration-schema.md). If the config is older, read that file's Versioning table and, for every key added since: adopt the documented default where detection or the default settles it, and **ask the user for the rest** — a value that is a policy choice, not a repository fact, has no default worth guessing. Then write the current `version`. Report each key adopted and each key asked about. A config already at the current version skips this step; never rewrite `version` without having reconciled the keys behind it.
+- **Reconcile the schema version first.** Compare the config's `version` against the current one in [configuration-schema.md](../../shared/configuration-schema.md). If the config is older, read that file's Versioning table and, for every key added since: adopt the documented default where detection or the default settles it, and **ask the user for the rest** — a value that is a policy choice, not a repository fact, has no default worth guessing. Drop every key the table records as removed. Then write the current `version`. Report each key adopted and each key asked about. A config already at the current version skips this step; never rewrite `version` without having reconciled the keys behind it.
 - **Preserve** every human-authored value — conventions, gates, `developmentStrategy`, skills, tracker settings, and any key not in the schema. Extensibility is the point; unknown keys survive untouched. Never downgrade `parallel` to `sequential` because a re-scan found new fixed ports — report them as drift and let the user decide.
 - **Refresh** detected values, and report each change as a diff for confirmation rather than applying it silently.
 - **Report** applications that appeared or disappeared, and commands that stopped working.

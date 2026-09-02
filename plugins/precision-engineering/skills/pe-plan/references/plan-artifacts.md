@@ -4,11 +4,12 @@ How the Planner authors the one file it owns per application. The shared plan co
 
 ## `<app-name>.plan.md`
 
-One file per application: the design a human approves at the gate, and the tasks a Developer implements from. Reconnaissance stays in the Explorer's `<app-name>.recon.md`, which you read and never edit.
+One file per application: what the code does today, the design a human approves at the gate, and the tasks a Developer implements from.
 
 | Section | Written by |
 |---|---|
 | `## Tasks` | Planner; Developer maintains the markers |
+| `## Current state` | Planner |
 | Design sections, from the app's plan template | Planner |
 | `## Extensibility`, `## Test scenarios` | Planner |
 | `## Task details` | Planner; Developer appends `Notes` |
@@ -28,6 +29,33 @@ The checklist sits first, so status is the first thing any reader sees:
 
 Each entry is `<marker> <task-id> — <title>`, with the commit's short SHA appended once complete. Write every entry as `[ ]`; the Developer maintains the markers from there.
 
+### Current state
+
+Facts about the code today, with no design in them. Kept short: the approver reads it as context, and the Developer reads it to follow the precedents it cites.
+
+```markdown
+## Current state
+
+### Affected areas
+| Path | Role in this change |
+
+### Patterns to follow
+The precedent for each new unit, cited `path:line`, and what that precedent establishes.
+
+### Integration points
+What calls in, what this calls out to, what shares state. Anything crossing into another
+application is an interface you return, not a section here.
+
+### Existing test coverage
+Framework, location, conventions, and gaps in the affected area.
+
+### Absent abstractions and hazards
+What the change needs that the codebase does not have, and anything making the obvious
+approach wrong — legacy coupling, in-flight migrations, generated code, vendored files.
+```
+
+A fact that turns out wrong is corrected here and its consequence stated in **Design** — never left standing while the design contradicts it.
+
 ### Design sections
 
 Structured by the plan template for the application's `type`:
@@ -39,7 +67,7 @@ Structured by the plan template for the application's `type`:
 | `fullstack` | Both, backend sections first, in the one plan file |
 | `library`, `infrastructure` | No template — document public API surface changes, consumer impact, and migration path |
 
-A template supplies design sections only. The file heading, `Tasks`, and `Task details` come from this reference. The template's own title and requirement summary are dropped, because `overview.md` already carries them.
+A template supplies design sections only. The file heading, `Tasks`, `Current state`, and `Task details` come from this reference. The template's own title and requirement summary are dropped, because `overview.md` already carries them.
 
 - Emit the sections that apply, in template order.
 - Name every section with nothing to record in a `**Not applicable:**` line with its reason, rather than writing it out as a stub — `**Not applicable:** Query String Parameters — the endpoint takes none.` One line closes the file's top-level sections; one closes each endpoint or component block whose own subsections were dropped.
@@ -73,8 +101,8 @@ Every task is independently implementable and independently verifiable. It state
 Rules:
 
 - Every task in the details section has a matching checklist entry in `## Tasks`, and vice versa.
-- `Depends on` is honest and complete, and every edge reaching another application is tagged. `contract:` means the task needs only an interface already fixed under **Interface contract**, so both sides build concurrently. `runtime:` means it needs that application's code built, running, or seeding data, so this task waits. Implementation schedules tasks from these tags: an omitted edge becomes a race, an over-tagged `runtime:` idles work that could have run, and a `runtime:` edge mistagged `contract:` becomes a broken build.
-- `Change` names behavior, contracts, and where this connects to what already exists — never file layout, naming, or mechanics. Those are the Developer's to decide against `<app-name>.recon.md`.
+- `Depends on` is honest and complete, and every edge reaching another application is tagged. `contract:` means the task needs only an interface whose shape is fixed, so both sides build concurrently — name that interface in the tag, and cite its `overview.md` **Interface contract** number once the orchestrator has reconciled and numbered it. `runtime:` means it needs that application's code built, running, or seeding data, so this task waits. Implementation schedules tasks from these tags: an omitted edge becomes a race, an over-tagged `runtime:` idles work that could have run, and a `runtime:` edge mistagged `contract:` becomes a broken build.
+- `Change` names behavior, contracts, and where this connects to what already exists — never file layout, naming, or mechanics. Those are the Developer's to decide against `## Current state`.
 - `Verify` must be a runnable command drawn from the app's configured `commands`, and the **cheapest one that would catch this task failing** — a typecheck for a type-only change, a single test file where the runner takes one. The exit gate runs the full set once at the end, so a task reaching for it needlessly pays for it on every task. "Manually check" is not a verification.
 - `Acceptance` states observable behavior, never implementation detail.
 - A task no single agent can complete in one sitting is too large — split it.

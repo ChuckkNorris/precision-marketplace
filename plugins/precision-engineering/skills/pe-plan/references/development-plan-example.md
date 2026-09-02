@@ -30,10 +30,15 @@ when a caller is throttled.
 
 ## Design
 Limiter state lives in Redis, already an `api` dependency for sessions
-(`api.recon.md`: `src/shared/redis.ts:12`). An in-process bucket
+(`api.plan.md` Current state: `src/shared/redis.ts:12`). An in-process bucket
 would not hold across the three API replicas. `web` treats any non-2xx as a generic
 failure today — a cross-application integration point, so it is recorded here rather
 than in either app plan.
+
+## Interface contract
+| # | Contract | Producer | Consumer |
+|---|---|---|---|
+| I1 | 429 body `{ "error": "rate_limited", "retryAfterSeconds": <int> }` with `Retry-After` | api T-003 | web T-011 |
 
 ## Risks
 | Risk | Likelihood | Mitigation |
@@ -61,8 +66,6 @@ Q2 unresolved. T-002 cannot proceed — bucket key derivation depends on the ans
 
 ## `api.plan.md`
 
-The Explorer's `api.recon.md` sits beside it, holding the current state these citations draw on.
-
 ```markdown
 # api — Order Rate Limiting
 
@@ -70,6 +73,25 @@ The Explorer's `api.recon.md` sits beside it, holding the current state these ci
 - [x] T-001 — Add rate limit configuration · `a1b2c3d`
 - [~] T-002 — Redis-backed token bucket
 - [ ] T-003 — Rate limit middleware
+
+## Current state
+
+### Affected areas
+| Path | Role in this change |
+| `src/middleware/auth.ts` | Resolves the API key; the limiter must run after it |
+| `src/shared/redis.ts` | Existing client, sessions only today |
+
+### Patterns to follow
+`src/middleware/auth.ts:34` — middleware is a factory returning the handler, registered in
+`src/app.ts:22`. New middleware follows that shape.
+
+### Existing test coverage
+Vitest, colocated `*.test.ts`. Middleware is covered by unit tests with a fake request;
+no integration coverage for the order routes.
+
+### Absent abstractions and hazards
+No rate-limiting primitive exists. `legacy/throttle.ts` is dead for order paths but live
+for reporting — out of scope, and not a precedent to follow.
 
 ## Endpoints
 
@@ -147,4 +169,4 @@ registration and nothing else.
   Q2 decides whether the key is the API key or the resolved org. Left `[~]`.
 ```
 
-The files agree at every point: the checklist SHA on T-001 matches the verification table's commit, `[~]` on T-002 matches its `Notes`, and `Blockers` names the question those Notes cite. An agent resuming with no memory of the run recovers all of it from the files — which is why status lives in the plan rather than beside it.
+The files agree at every point: the checklist SHA on T-001 matches the verification table's commit, `[~]` on T-002 matches its `Notes`, `Blockers` names the question those Notes cite, and I1 is the one shape both plans build against. An agent resuming with no memory of the run recovers all of it from the files — which is why status lives in the plan rather than beside it.

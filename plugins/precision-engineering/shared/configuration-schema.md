@@ -4,6 +4,8 @@ Authoritative schema for `.agents/precision-engineering.config.md`. `/pe-setup` 
 
 Unknown keys are preserved, never discarded — the config is extensible by design. Agents must ignore keys they do not understand rather than error.
 
+**A config carries values, not commentary.** It records nothing about a moment in time — no detection evidence, no validation status, no dates, no notes from a run. Those belong in `/pe-setup`'s report to the user. Every comment in the schema block below documents the schema, not a config written from it, so two repositories at the same `version` differ only where their facts differ and a config diff means a schema change or a repository change.
+
 ## Resolution rules
 
 - **Missing config** — halt and instruct the user to run `/pe-setup`. Never guess commands.
@@ -17,7 +19,7 @@ Unknown keys are preserved, never discarded — the config is extensible by desi
 ## Schema
 
 ```yaml
-version: 3                          # required; schema version — see Versioning
+version: 4                          # required; schema version — see Versioning
 
 repository:
   strategy: monorepo                # monorepo | polyrepo
@@ -39,8 +41,7 @@ workflow:
     claimTimeoutMinutes: 60         # a claim older than this is treated as abandoned
     maxTriggers: 10                 # resolutions allowed on one plan directory
   steps:                            # per-step mandatory skills (see resolution rules)
-    explore:   { skills: [], model: "" }  # unset model = inherit, and /pe-setup asks for one
-    plan:      { skills: [], model: "" }
+    plan:      { skills: [], model: "" }  # unset model = inherit, and /pe-setup asks for one
     implement: { skills: [], model: "" }
     review:    { skills: [], model: "" }  # standards the Reviewer judges the diff against
   quality:
@@ -113,7 +114,7 @@ applications:                       # required; one entry per deployable/buildab
 
 ### `workflow.developmentStrategy`
 - `sequential` — One Developer runs at a time. Nothing is allocated, and collisions with anything else on the host are the developer's to manage. This is the default, and how every run behaved before `runtime` existed.
-- `parallel` — Concurrent Developers each get their own worktree and, where `runtime.isolation` is `assigned`, their own block of ports.
+- `parallel` — Concurrent Developers each get their own worktree, and every subagent needing a live stack gets, where `runtime.isolation` is `assigned`, its own block of ports.
 
 `parallel` with no `runtime` block still isolates by worktree, which suffices only for a repository whose tests bind no ports.
 
@@ -202,6 +203,7 @@ Every bump adds a row below, naming each key involved. That list is the only inp
 | 1 | Initial schema. |
 | 2 | Added `workflow.gates.channel`, `workflow.continuation` (`trigger`, `approveToken`, `reviseToken`, `claimLabel`, `claimTimeoutMinutes`, `maxTriggers`), and `git.pr.planTitlePattern`. Added `pr-comment` to `workflow.escalation.unattended`. All additive with defaults; a version 1 config runs unchanged on defaults. |
 | 3 | Added `workflow.developmentStrategy`, the `runtime` block, `applications[].dependsOn`, and `workflow.steps.<step>.model`. The first three are additive: a version 2 config runs unchanged on `sequential`, which is the pre-existing behavior. `model` is a policy choice with nothing to detect, so `/pe-setup` asks for it per step rather than adopting a default; it defaults to `inherit`, and a step with no `model` is unconfigured — which is what prompts the question. |
+| 4 | Removed `workflow.steps.explore` — the Planner now explores the application it plans, so there is no separate step to configure. A version 3 config's `explore` entry is inert to every agent, and `/pe-setup` drops it on reconcile. |
 
 ## Extending the schema
 
